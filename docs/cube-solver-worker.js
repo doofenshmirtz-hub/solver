@@ -3,13 +3,7 @@ import { Cube, initSolver, solve } from "https://esm.sh/rubik-solver@0.1.2";
 let initialized = false;
 
 function snapshot(cube) {
-  const state = cube.toJSON();
-  return {
-    cornerPos: state.cp,
-    cornerOri: state.co,
-    edgePos: state.ep,
-    edgeOri: state.eo
-  };
+  return cube.asString();
 }
 
 self.onmessage = async (event) => {
