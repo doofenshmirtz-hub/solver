@@ -1,10 +1,12 @@
 // ============================================================================
-// Rubik's Cube Solver - Modern Web App
-// Browser-compatible: Cubie Representation + Kociemba Phase 1 Solver
+// Rubik's Cube Solver - 3D Web App with Three.js
 // ============================================================================
 
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js';
+
 // -----------------------------------------------------------------------------
-// CONSTANTS & TYPES
+// CONSTANTS & TYPES (same as before)
 // -----------------------------------------------------------------------------
 
 const Face = { U: 'U', R: 'R', F: 'F', D: 'D', L: 'L', B: 'B' };
@@ -61,8 +63,24 @@ const SOLVED_STATE = {
 
 const STANDARD_COLOR_TO_FACE = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
 
+// Three.js face configuration: [normal, rotation]
+const FACE_CONFIG = {
+  U: { normal: new THREE.Vector3(0, 1, 0), rot: [0, 0, 0], pos: [0, 1.05, 0] },    // Up
+  D: { normal: new THREE.Vector3(0, -1, 0), rot: [Math.PI, 0, 0], pos: [0, -1.05, 0] }, // Down
+  F: { normal: new THREE.Vector3(0, 0, 1), rot: [-Math.PI/2, 0, 0], pos: [0, 0, 1.05] }, // Front
+  B: { normal: new THREE.Vector3(0, 0, -1), rot: [Math.PI/2, 0, 0], pos: [0, 0, -1.05] }, // Back
+  R: { normal: new THREE.Vector3(1, 0, 0), rot: [0, 0, -Math.PI/2], pos: [1.05, 0, 0] }, // Right
+  L: { normal: new THREE.Vector3(-1, 0, 0), rot: [0, 0, Math.PI/2], pos: [-1.05, 0, 0] }, // Left
+};
+
+// Color hex values
+const COLOR_HEX = {
+  W: 0xfefefe, Y: 0xfde047, R: 0xf87171,
+  O: 0xfb923c, G: 0x4ade80, B: 0x60a5fa,
+};
+
 // -----------------------------------------------------------------------------
-// MOVE TABLES
+// MOVE TABLES (same as before)
 // -----------------------------------------------------------------------------
 
 function generateMoveTables() {
@@ -75,14 +93,11 @@ function generateMoveTables() {
     L: { cornerPerm: [0,2,6,3,4,1,5,7], cornerOriDelta: [0,1,2,0,0,2,1,0], edgePerm: [0,1,10,3,4,5,9,7,8,2,11,6], edgeOriDelta: [0,0,0,0,0,0,0,0,0,0,0,0] },
     B: { cornerPerm: [0,1,3,7,4,5,2,6], cornerOriDelta: [0,0,1,2,0,0,2,1], edgePerm: [0,1,2,11,4,5,6,10,8,9,3,7], edgeOriDelta: [0,0,0,1,0,0,0,1,0,0,1,1] },
   };
-
   const applyPerm = (p1, p2) => p1.map(i => p2[i]);
   const applyOri = (perm, oriDelta) => perm.map(i => oriDelta[i]);
   const addOri = (ori1, ori2, mod) => ori1.map((v, i) => (v + ori2[i]) % mod);
-
   for (const [baseMove, def] of Object.entries(moveDefs)) {
     tables[baseMove] = { ...def, cornerPerm: [...def.cornerPerm], cornerOriDelta: [...def.cornerOriDelta], edgePerm: [...def.edgePerm], edgeOriDelta: [...def.edgeOriDelta] };
-
     const cp1 = applyPerm(def.cornerPerm, def.cornerPerm);
     const cp2 = applyPerm(cp1, def.cornerPerm);
     const co1 = addOri(applyOri(def.cornerPerm, def.cornerOriDelta), def.cornerOriDelta, 3);
@@ -91,7 +106,6 @@ function generateMoveTables() {
     const ep2 = applyPerm(ep1, def.edgePerm);
     const eo1 = addOri(applyOri(def.edgePerm, def.edgeOriDelta), def.edgeOriDelta, 2);
     const eo2 = addOri(eo1, def.edgeOriDelta, 2);
-
     tables[baseMove + "'"] = { cornerPerm: cp2, cornerOriDelta: co2, edgePerm: ep2, edgeOriDelta: eo2 };
     tables[baseMove + '2'] = { cornerPerm: cp1, cornerOriDelta: co1, edgePerm: ep1, edgeOriDelta: eo1 };
   }
@@ -127,16 +141,11 @@ function equalsCube(a, b) {
 }
 
 function cloneState(state) {
-  return {
-    cornerPos: [...state.cornerPos],
-    cornerOri: [...state.cornerOri],
-    edgePos: [...state.edgePos],
-    edgeOri: [...state.edgeOri],
-  };
+  return { cornerPos: [...state.cornerPos], cornerOri: [...state.cornerOri], edgePos: [...state.edgePos], edgeOri: [...state.edgeOri] };
 }
 
 // -----------------------------------------------------------------------------
-// INPUT PARSING (54 stickers -> cubie)
+// INPUT PARSING (same as before)
 // -----------------------------------------------------------------------------
 
 function validateCenters(stickers) {
@@ -145,9 +154,7 @@ function validateCenters(stickers) {
   const vals = Object.values(centers);
   if (new Set(vals).size !== 6) return { valid: false, error: 'Centers must be 6 distinct colors' };
   for (const [f1, f2] of [[Face.U, Face.D], [Face.R, Face.L], [Face.F, Face.B]]) {
-    if (OPPOSITE[centers[f1]] !== centers[f2]) {
-      return { valid: false, error: `Invalid opposites: ${centers[f1]} (${f1}) vs ${centers[f2]} (${f2})` };
-    }
+    if (OPPOSITE[centers[f1]] !== centers[f2]) return { valid: false, error: `Invalid opposites: ${centers[f1]} (${f1}) vs ${centers[f2]} (${f2})` };
   }
   const colorToFace = {};
   for (const [f, c] of Object.entries(centers)) colorToFace[c] = f;
@@ -156,7 +163,6 @@ function validateCenters(stickers) {
 
 function stickersToCubie(stickers, colorToFace) {
   const state = { cornerPos: new Array(8), cornerOri: new Array(8), edgePos: new Array(12), edgeOri: new Array(12) };
-
   const cornerMap = new Map(), edgeMap = new Map();
   for (let i = 0; i < 8; i++) {
     const faces = CORNER_FACES[i];
@@ -168,7 +174,6 @@ function stickersToCubie(stickers, colorToFace) {
     const sig = faces.map(f => STANDARD_COLOR_TO_FACE[Object.keys(STANDARD_COLOR_TO_FACE).find(k => STANDARD_COLOR_TO_FACE[k] === f)]).sort().join(',');
     edgeMap.set(sig, i);
   }
-
   for (let i = 0; i < 8; i++) {
     const stickerColors = CORNER_STICKER_MAP[i].map(({ face, sticker }) => stickers[face][sticker]);
     const standardFaces = stickerColors.map(c => colorToFace[c]);
@@ -180,7 +185,6 @@ function stickersToCubie(stickers, colorToFace) {
     const uOrDFaceInSlot = CORNER_FACES[i].findIndex(f => f === Face.U || f === Face.D);
     state.cornerOri[i] = (uOrDFaceInCubie - uOrDFaceInSlot + 3) % 3;
   }
-
   for (let i = 0; i < 12; i++) {
     const stickerColors = EDGE_STICKER_MAP[i].map(({ face, sticker }) => stickers[face][sticker]);
     const standardFaces = stickerColors.map(c => colorToFace[c]);
@@ -207,14 +211,12 @@ function validateCubeState(state) {
 function permutationParity(perm) {
   const visited = new Array(perm.length).fill(false);
   let cycles = 0;
-  for (let i = 0; i < perm.length; i++) {
-    if (!visited[i]) { cycles++; let j = i; while (!visited[j]) { visited[j] = true; j = perm[j]; } }
-  }
+  for (let i = 0; i < perm.length; i++) if (!visited[i]) { cycles++; let j = i; while (!visited[j]) { visited[j] = true; j = perm[j]; } }
   return (perm.length - cycles) % 2;
 }
 
 // -----------------------------------------------------------------------------
-// PHASE 1 SOLVER (G1 subgroup)
+// PHASE 1 SOLVER (same as before)
 // -----------------------------------------------------------------------------
 
 const CORNER_ORI_MAX = 2187, EDGE_ORI_MAX = 2048, UD_SLICE_MAX = 495;
@@ -235,7 +237,6 @@ function generatePhase1Pruning() {
   const size = CORNER_ORI_MAX * EDGE_ORI_MAX * UD_SLICE_MAX;
   const table = new Uint8Array(size); table.fill(255);
   const queue = [[0, 0, 0]]; table[0] = 0;
-
   const coTrans = [], eoTrans = [], udTrans = [];
   for (const m of BASIC_MOVES) {
     const mt = MOVE_TABLES[m];
@@ -248,7 +249,6 @@ function generatePhase1Pruning() {
       co[i] = getCornerOriCoord(applyMove(s, mt));
     }
     coTrans.push(co);
-
     const eo = new Array(EDGE_ORI_MAX);
     for (let i = 0; i < EDGE_ORI_MAX; i++) {
       let v = i, ori = new Array(11);
@@ -258,7 +258,6 @@ function generatePhase1Pruning() {
       eo[i] = getEdgeOriCoord(applyMove(s, mt));
     }
     eoTrans.push(eo);
-
     const ud = new Array(UD_SLICE_MAX);
     for (let i = 0; i < UD_SLICE_MAX; i++) {
       const slice = [8, 9, 10, 11];
@@ -277,7 +276,6 @@ function generatePhase1Pruning() {
     }
     udTrans.push(ud);
   }
-
   let head = 0;
   while (head < queue.length) {
     const [co, eo, ud] = queue[head++];
@@ -293,11 +291,7 @@ function generatePhase1Pruning() {
 }
 
 function getPhase1Pruning() {
-  if (!phase1Pruning) {
-    console.log('Generating Phase 1 pruning table...');
-    phase1Pruning = generatePhase1Pruning();
-    console.log('Phase 1 pruning table ready');
-  }
+  if (!phase1Pruning) { console.log('Generating Phase 1 pruning table...'); phase1Pruning = generatePhase1Pruning(); console.log('Phase 1 pruning table ready'); }
   return phase1Pruning;
 }
 
@@ -306,7 +300,6 @@ function phase1Search(state, maxDepth) {
   const co = getCornerOriCoord(state), eo = getEdgeOriCoord(state), ud = getUDSliceCoord(state);
   const idx = co * EDGE_ORI_MAX * UD_SLICE_MAX + eo * UD_SLICE_MAX + ud;
   if (table[idx] === 255 || table[idx] > maxDepth) return null;
-
   const path = []; let found = null;
   function dfs(cState, cCo, cEo, cUd, depth, lastMove) {
     const cidx = cCo * EDGE_ORI_MAX * UD_SLICE_MAX + cEo * UD_SLICE_MAX + cUd;
@@ -337,17 +330,15 @@ function solveCube(state) {
 }
 
 // -----------------------------------------------------------------------------
-// CUBE TO STICKERS (for visualization)
+// CUBE TO STICKERS (for 3D visualization)
 // -----------------------------------------------------------------------------
 
 function cubieToStickers(state, colorToFace) {
   const faceToColor = {};
   for (const [c, f] of Object.entries(colorToFace)) faceToColor[f] = c;
-
   const stickers = {};
   for (const f of FACE_ORDER) stickers[f] = new Array(9).fill(faceToColor[f]);
   for (const f of FACE_ORDER) stickers[f][4] = faceToColor[f];
-
   for (let i = 0; i < 8; i++) {
     const idx = state.cornerPos[i], ori = state.cornerOri[i];
     const faces = CORNER_FACES[idx];
@@ -370,6 +361,278 @@ function cubieToStickers(state, colorToFace) {
 }
 
 // -----------------------------------------------------------------------------
+// THREE.JS 3D CUBE
+// -----------------------------------------------------------------------------
+
+class RubiksCube3D {
+  constructor(container) {
+    this.container = container;
+    this.stickerMeshes = {}; // face -> array of 9 meshes
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+    this.selectedColor = 'W';
+    this.isDragging = false;
+    this.dragStart = null;
+
+    this.initThree();
+    this.createCube();
+    this.setupEvents();
+    this.animate();
+  }
+
+  initThree() {
+    const rect = this.container.getBoundingClientRect();
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer.setSize(rect.width, rect.height);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.container.appendChild(this.renderer.domElement);
+
+    this.scene = new THREE.Scene();
+    this.scene.background = null;
+
+    this.camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 0.1, 100);
+    this.camera.position.set(3, 3, 5);
+
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.05;
+    this.controls.enablePan = false;
+    this.controls.minDistance = 3;
+    this.controls.maxDistance = 10;
+    this.controls.autoRotate = false;
+
+    // Lights
+    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    this.scene.add(ambient);
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(5, 10, 7);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.set(1024, 1024);
+    this.scene.add(dirLight);
+
+    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+    dirLight2.position.set(-5, -5, -5);
+    this.scene.add(dirLight2);
+
+    // Resize handler
+    window.addEventListener('resize', () => this.onResize());
+  }
+
+  onResize() {
+    const rect = this.container.getBoundingClientRect();
+    this.camera.aspect = rect.width / rect.height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(rect.width, rect.height);
+  }
+
+  createCube() {
+    this.cubeGroup = new THREE.Group();
+    this.scene.add(this.cubeGroup);
+
+    // Cube core (black)
+    const coreGeo = new THREE.BoxGeometry(1.9, 1.9, 1.9);
+    const coreMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8, metalness: 0.2 });
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    this.cubeGroup.add(core);
+
+    // Create stickers for each face
+    const stickerSize = 0.58;
+    const gap = 0.03;
+    const faceOffset = 1.01;
+
+    for (const f of FACE_ORDER) {
+      const config = FACE_CONFIG[f];
+      const faceGroup = new THREE.Group();
+      faceGroup.userData = { face: f };
+      this.stickerMeshes[f] = [];
+
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const sticker = this.createSticker(f, row, col, stickerSize, gap, faceOffset);
+          faceGroup.add(sticker);
+          this.stickerMeshes[f].push(sticker);
+        }
+      }
+
+      // Position and rotate face group
+      faceGroup.position.set(...config.pos);
+      faceGroup.rotation.set(...config.rot);
+      this.cubeGroup.add(faceGroup);
+    }
+
+    // Set initial colors (solved state)
+    const faceToColor = { U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' };
+    this.updateColors(faceToColor);
+  }
+
+  createSticker(face, row, col, size, gap, offset) {
+    const geo = new THREE.BoxGeometry(size, size, 0.08);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      roughness: 0.3,
+      metalness: 0.1,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.userData = { face, row, col, index: row * 3 + col, isCenter: row === 1 && col === 1 };
+
+    // Position within face (centered)
+    const start = -size - gap;
+    mesh.position.set(col * (size + gap) + start, -row * (size + gap) - start, offset / 2);
+
+    // Rounded corners via bevel (simple approach)
+    return mesh;
+  }
+
+  updateColors(faceToColor) {
+    for (const f of FACE_ORDER) {
+      const color = COLOR_HEX[faceToColor[f]];
+      for (let i = 0; i < 9; i++) {
+        const mesh = this.stickerMeshes[f][i];
+        mesh.material.color.setHex(color);
+        mesh.material.needsUpdate = true;
+      }
+    }
+  }
+
+  setStickerColor(face, index, color) {
+    const mesh = this.stickerMeshes[face][index];
+    if (mesh) {
+      mesh.material.color.setHex(COLOR_HEX[color]);
+      mesh.material.needsUpdate = true;
+    }
+  }
+
+  getStickerAtUV(face, uv) {
+    // Convert UV (0-1) to row/col
+    const col = Math.floor(uv.x * 3);
+    const row = Math.floor((1 - uv.y) * 3);
+    const clampedCol = Math.max(0, Math.min(2, col));
+    const clampedRow = Math.max(0, Math.min(2, row));
+    return clampedRow * 3 + clampedCol;
+  }
+
+  setupEvents() {
+    // Mouse move for hover
+    this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    this.renderer.domElement.addEventListener('click', (e) => this.onClick(e));
+    this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    this.renderer.domElement.addEventListener('pointerup', (e) => this.onPointerUp(e));
+    this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
+    this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+
+  getMousePosition(e) {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  onMouseMove(e) {
+    this.getMousePosition(e);
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.cubeGroup.children, true);
+
+    // Reset all hover states
+    for (const f of FACE_ORDER) {
+      for (const mesh of this.stickerMeshes[f]) {
+        if (mesh.material.emissive) mesh.material.emissive.setHex(0x000000);
+      }
+    }
+
+    if (intersects.length > 0) {
+      const hit = intersects[0].object;
+      if (hit.userData.face && hit.material.emissive) {
+        hit.material.emissive.setHex(0x444444);
+        hit.material.needsUpdate = true;
+        this.renderer.domElement.style.cursor = 'pointer';
+      }
+    } else {
+      this.renderer.domElement.style.cursor = 'grab';
+    }
+  }
+
+  onClick(e) {
+    if (this.isDragging) return;
+    this.getMousePosition(e);
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.cubeGroup.children, true);
+
+    if (intersects.length > 0) {
+      const hit = intersects[0].object;
+      if (hit.userData.face && hit.userData.index !== undefined) {
+        this.setStickerColor(hit.userData.face, hit.userData.index, this.selectedColor);
+        if (window.app) window.app.onStickerChange(hit.userData.face, hit.userData.index, this.selectedColor);
+      }
+    }
+  }
+
+  onPointerDown(e) {
+    this.isDragging = true;
+    this.dragStart = { x: e.clientX, y: e.clientY };
+    this.controls.enabled = false;
+    this.renderer.domElement.style.cursor = 'grabbing';
+  }
+
+  onPointerUp(e) {
+    const dx = e.clientX - this.dragStart.x;
+    const dy = e.clientY - this.dragStart.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    this.isDragging = false;
+    this.controls.enabled = true;
+    this.renderer.domElement.style.cursor = 'grab';
+    if (dist < 5) {
+      // Treat as click
+      this.onClick(e);
+    }
+  }
+
+  onPointerMove(e) {
+    if (!this.isDragging) return;
+    // Let OrbitControls handle rotation when dragging on empty space
+    // But we disable controls during drag, so just prevent default
+  }
+
+  animate() {
+    requestAnimationFrame(() => this.animate());
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  setSelectedColor(color) {
+    this.selectedColor = color;
+  }
+
+  // Animation for solution playback
+  async playSolution(moves, speed = 500) {
+    const faceToColor = { U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' };
+    let state = cloneState(SOLVED_STATE);
+
+    // First, set cube to initial scrambled state
+    // We need to apply inverse moves to get initial state
+    // Actually, we'll just apply moves forward from solved for visualization
+    // The app will handle setting the correct initial state
+
+    for (const move of moves) {
+      state = applyMove(state, MOVE_TABLES[move]);
+      const stickers = cubieToStickers(state, faceToColor);
+      this.updateColors(stickers);
+      await new Promise(r => setTimeout(r, speed));
+    }
+  }
+
+  setState(state, colorToFace) {
+    const stickers = cubieToStickers(state, colorToFace);
+    this.updateColors(stickers);
+  }
+}
+
+// -----------------------------------------------------------------------------
 // TOAST NOTIFICATIONS
 // -----------------------------------------------------------------------------
 
@@ -388,43 +651,14 @@ function showToast(message, type = 'info') {
 }
 
 // -----------------------------------------------------------------------------
-// WEB APP STATE & UI
+// MAIN APP
 // -----------------------------------------------------------------------------
 
 let currentStickers = {};
 let selectedColor = 'W';
 let solutionMoves = [];
 let animState = null;
-let faceElements = {};
-
-function initCubeNet() {
-  const net = document.getElementById('cube-net');
-  net.innerHTML = '';
-  faceElements = {};
-  for (const f of FACE_ORDER) {
-    const faceDiv = document.createElement('div');
-    faceDiv.className = 'face ' + f;
-    faceDiv.dataset.face = f;
-    faceDiv.setAttribute('role', 'group');
-    faceDiv.setAttribute('aria-label', `Face ${f}`);
-    for (let i = 0; i < 9; i++) {
-      const sticker = document.createElement('button');
-      sticker.className = 'sticker' + (i === 4 ? ' center' : '');
-      sticker.dataset.face = f;
-      sticker.dataset.index = i;
-      sticker.setAttribute('aria-label', `${f} sticker ${i + 1}`);
-      sticker.setAttribute('tabindex', '0');
-      sticker.addEventListener('click', () => setSticker(f, i));
-      sticker.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSticker(f, i); }
-      });
-      faceDiv.appendChild(sticker);
-    }
-    net.appendChild(faceDiv);
-    faceElements[f] = faceDiv;
-  }
-  resetCube();
-}
+let cube3d = null;
 
 function initColorPalette() {
   const palette = document.getElementById('color-palette');
@@ -448,19 +682,14 @@ function selectColor(c) {
     b.classList.toggle('active', b.dataset.color === c);
     b.setAttribute('aria-checked', b.dataset.color === c);
   });
-}
-
-function setSticker(face, index) {
-  currentStickers[face][index] = selectedColor;
-  renderStickers();
-  checkSolveReady();
+  if (cube3d) cube3d.setSelectedColor(c);
 }
 
 function resetCube() {
   currentStickers = {};
   const defaults = { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' };
   for (const f of FACE_ORDER) currentStickers[f] = new Array(9).fill(defaults[f]);
-  renderStickers();
+  if (cube3d) cube3d.updateColors(defaults);
   selectColor('W');
   hideOutput();
   hideVisualizer();
@@ -469,33 +698,18 @@ function resetCube() {
 
 function randomScramble() {
   let state = cloneState(SOLVED_STATE);
-  const moves = [];
   let lastFace = -1;
   for (let i = 0; i < 25; i++) {
     let mi;
     do { mi = Math.floor(Math.random() * BASIC_MOVES.length); } while (Math.floor(mi / 3) === lastFace);
     lastFace = Math.floor(mi / 3);
-    const m = BASIC_MOVES[mi];
-    moves.push(m);
-    state = applyMove(state, MOVE_TABLES[m]);
+    state = applyMove(state, MOVE_TABLES[BASIC_MOVES[mi]]);
   }
   const faceToColor = { U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' };
   currentStickers = cubieToStickers(state, faceToColor);
-  renderStickers();
+  if (cube3d) cube3d.setState(state, faceToColor);
   checkSolveReady();
   showToast('Random scramble generated', 'success');
-}
-
-function renderStickers() {
-  for (const f of FACE_ORDER) {
-    const faceDiv = faceElements[f];
-    if (!faceDiv) continue;
-    const stickers = faceDiv.querySelectorAll('.sticker');
-    stickers.forEach((s, i) => {
-      const color = currentStickers[f][i];
-      s.className = 'sticker' + (i === 4 ? ' center' : '') + ' ' + color + ' filled';
-    });
-  }
 }
 
 function checkSolveReady() {
@@ -590,8 +804,17 @@ function hideOutput() { document.getElementById('output-section').hidden = true;
 function setupVisualizer(initialState, moves) {
   const section = document.getElementById('visualizer-section');
   section.hidden = false;
+
+  // Initialize 3D cube if not exists
+  if (!cube3d) {
+    const container = document.getElementById('cube-3d-container');
+    cube3d = new RubiksCube3D(container);
+    window.cube3d = cube3d; // Global for debugging
+  }
+
   animState = { initialState: cloneState(initialState), moves, currentStep: 0, playing: false, timer: null };
-  drawCube(animState.initialState);
+  cube3d.setState(initialState, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
+
   document.getElementById('play-btn').onclick = playAnimation;
   document.getElementById('pause-btn').onclick = pauseAnimation;
   document.getElementById('step-btn').onclick = stepAnimation;
@@ -602,49 +825,6 @@ function setupVisualizer(initialState, moves) {
 }
 
 function hideVisualizer() { document.getElementById('visualizer-section').hidden = true; }
-
-function drawCube(state) {
-  const canvas = document.getElementById('cube-canvas');
-  const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
-  ctx.clearRect(0, 0, w, h);
-
-  const faceSize = 100, stickerSize = faceSize / 3;
-  const facePositions = {
-    U: { x: faceSize * 1.2, y: 20 },
-    L: { x: 20, y: faceSize * 1.2 + 20 },
-    F: { x: faceSize * 1.2 + 20, y: faceSize * 1.2 + 20 },
-    R: { x: faceSize * 2.4 + 40, y: faceSize * 1.2 + 20 },
-    B: { x: faceSize * 3.6 + 60, y: faceSize * 1.2 + 20 },
-    D: { x: faceSize * 1.2 + 20, y: faceSize * 2.4 + 60 },
-  };
-
-  const faceToColor = { W: '#fefefe', Y: '#fde047', R: '#f87171', O: '#fb923c', G: '#4ade80', B: '#60a5fa' };
-
-  for (const f of FACE_ORDER) {
-    const pos = facePositions[f];
-    const stickers = cubieToStickers(state, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
-    for (let i = 0; i < 9; i++) {
-      const row = Math.floor(i / 3), col = i % 3;
-      const color = faceToColor[stickers[f][i]] || '#333';
-      ctx.fillStyle = color;
-      const x = pos.x + col * stickerSize;
-      const y = pos.y + row * stickerSize;
-      const r = 6;
-      ctx.beginPath();
-      ctx.roundRect(x + 2, y + 2, stickerSize - 4, stickerSize - 4, r);
-      ctx.fill();
-      ctx.strokeStyle = '#1a1a2e';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-    // Face label
-    ctx.fillStyle = '#64748b';
-    ctx.font = '11px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(f, pos.x + faceSize / 2, pos.y - 6);
-  }
-}
 
 function playAnimation() {
   if (animState.playing) return;
@@ -669,17 +849,26 @@ function stepAnimation() {
   if (animState.currentStep >= animState.moves.length) return;
   const move = animState.moves[animState.currentStep];
   animState.initialState = applyMove(animState.initialState, MOVE_TABLES[move]);
-  drawCube(animState.initialState);
+  const faceToColor = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
+  cube3d.setState(animState.initialState, faceToColor);
   animState.currentStep++;
   if (animState.currentStep >= animState.moves.length) pauseAnimation();
 }
+
+// Sticker change callback from 3D cube
+function onStickerChange(face, index, color) {
+  currentStickers[face][index] = color;
+  checkSolveReady();
+}
+
+// Make globally accessible
+window.app = { onStickerChange };
 
 // -----------------------------------------------------------------------------
 // INIT
 // -----------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  initCubeNet();
   initColorPalette();
 
   document.getElementById('solve-btn').addEventListener('click', solve);
@@ -696,6 +885,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
     if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.getElementById('solve-btn').click(); }
     if (e.key === 'r' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.getElementById('reset-btn').click(); }
-    if (e.key === ' ' && !e.target.closest('.sticker')) { e.preventDefault(); if (animState && !animState.playing) playAnimation(); else if (animState) pauseAnimation(); }
+    if (e.key === ' ' && !e.target.closest('.color-btn')) { e.preventDefault(); if (animState && !animState.playing) playAnimation(); else if (animState) pauseAnimation(); }
+    // Number keys 1-6 for colors
+    const colorKeys = ['W', 'Y', 'R', 'O', 'G', 'B'];
+    const num = parseInt(e.key);
+    if (num >= 1 && num <= 6) { selectColor(colorKeys[num - 1]); }
   });
+
+  // Initialize 3D cube for input section too
+  const inputContainer = document.getElementById('cube-3d-input');
+  if (inputContainer) {
+    cube3d = new RubiksCube3D(inputContainer);
+    window.cube3d = cube3d;
+  }
 });

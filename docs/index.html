@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Rubik's Cube Solver - Cubie Representation & Kociemba Two-Phase Algorithm">
+  <meta name="description" content="Rubik's Cube Solver - 3D Interactive Cube with Cubie Representation & Kociemba Two-Phase Algorithm">
   <meta name="theme-color" content="#0a0f1a">
   <title>Rubik's Cube Solver</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,24 +14,22 @@
 <body>
   <div class="container">
     <header>
-      <span class="header-badge">Web Solver v1.0</span>
+      <span class="header-badge">3D Web Solver v2.0</span>
       <h1>Rubik's Cube Solver</h1>
-      <p class="subtitle">Cubie Representation • 54 Stickers → 40 Numbers • Kociemba Two-Phase Algorithm</p>
+      <p class="subtitle">Interactive 3D Cube • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
     </header>
 
     <main>
-      <!-- Input Section -->
+      <!-- Input Section with 3D Cube -->
       <section class="input-section" aria-labelledby="input-heading">
         <h2 id="input-heading">Enter Cube State</h2>
-        <p class="section-desc">Click each sticker to set its color. Centers (middle of each face) define the color scheme and must follow standard opposites: White↔Yellow, Red↔Orange, Green↔Blue.</p>
+        <p class="section-desc">Click stickers on the 3D cube to set colors. Drag to rotate, scroll to zoom. Centers define the color scheme (White↔Yellow, Red↔Orange, Green↔Blue).</p>
 
-        <div class="cube-net-wrapper">
-          <div class="cube-net" id="cube-net" role="grid" aria-label="Rubik's cube net - 6 faces, 9 stickers each">
-            <!-- Faces rendered by JS -->
-          </div>
+        <div class="cube-3d-wrapper">
+          <div id="cube-3d-input" class="cube-3d-container" role="application" aria-label="Interactive 3D Rubik's cube - click stickers to change colors"></div>
         </div>
 
-        <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers">
+        <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers on the cube">
           <!-- Color buttons injected by JS -->
         </div>
 
@@ -43,6 +41,22 @@
           <button id="random-btn" class="btn secondary">Random Scramble</button>
         </div>
         <p id="solve-hint" class="hint" style="text-align:center; margin-top:12px; font-size:0.8rem;">Complete all 6 faces with valid centers to enable solving</p>
+
+        <details class="input-guide">
+          <summary>How to input your cube</summary>
+          <div class="guide-content">
+            <p>Hold your cube with <strong>White on top</strong> and <strong>Green in front</strong> (standard orientation).</p>
+            <div class="face-order">
+              <span class="face-tag U">U (Up/White)</span>
+              <span class="face-tag R">R (Right/Red)</span>
+              <span class="face-tag F">F (Front/Green)</span>
+              <span class="face-tag D">D (Down/Yellow)</span>
+              <span class="face-tag L">L (Left/Orange)</span>
+              <span class="face-tag B">B (Back/Blue)</span>
+            </div>
+            <p>Click each sticker on the 3D cube, select a color from the palette, then click the sticker again. The centers (middle stickers) must follow standard opposites.</p>
+          </div>
+        </details>
       </section>
 
       <!-- Output Section -->
@@ -80,13 +94,13 @@
         </div>
       </section>
 
-      <!-- Visualizer Section -->
+      <!-- 3D Visualizer Section -->
       <section class="visualizer-section" id="visualizer-section" hidden aria-labelledby="viz-heading">
         <h2 id="viz-heading">Solution Visualization</h2>
-        <p class="section-desc">Watch the cube solve step by step. Use controls to play, pause, or step through moves.</p>
+        <p class="section-desc">Watch the 3D cube solve step by step. Drag to rotate view, use controls to play through the solution.</p>
 
-        <div class="canvas-wrapper">
-          <canvas id="cube-canvas" width="500" height="500" aria-label="Animated cube visualization showing solution steps"></canvas>
+        <div class="cube-3d-wrapper">
+          <div id="cube-3d-container" class="cube-3d-container" role="application" aria-label="Animated 3D cube showing solution steps"></div>
         </div>
 
         <div class="viz-controls">
