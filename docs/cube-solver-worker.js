@@ -29,7 +29,7 @@ self.onmessage = async (event) => {
       throw new Error("The solver could not find a solution for this cube state.");
     }
 
-    const moves = solution.trim() ? solution.trim().split(/\\s+/) : [];
+    const moves = solution.trim() ? solution.trim().split(/\s+/) : [];
     const replay = Cube.fromString(facelets);
     const snapshots = [snapshot(replay)];
 
