@@ -753,9 +753,12 @@ function tttInit() {
   const cells = document.querySelectorAll('.ttt-cell');
   cells.forEach(c => { c.textContent = ''; c.disabled = false; c.classList.remove('x', 'o', 'winning'); c.onclick = () => tttHandleClick(parseInt(c.dataset.pos)); });
   tttState.board = Array(9).fill(''); tttState.currentPlayer = 'X'; tttState.gameOver = false; tttUpdateStatus('Your turn (X)');
-  document.getElementById('ttt-new')?.onclick = tttInit;
-  document.getElementById('ttt-swap')?.onclick = tttSwapSides;
-  document.getElementById('ttt-difficulty')?.onchange = e => { tttState.difficulty = e.target.value; tttInit(); };
+  const newGameButton = document.getElementById('ttt-new');
+  if (newGameButton) newGameButton.onclick = tttInit;
+  const swapButton = document.getElementById('ttt-swap');
+  if (swapButton) swapButton.onclick = tttSwapSides;
+  const difficultySelect = document.getElementById('ttt-difficulty');
+  if (difficultySelect) difficultySelect.onchange = e => { tttState.difficulty = e.target.value; tttInit(); };
 }
 
 function tttSwapSides() { [tttState.playerSymbol, tttState.aiSymbol] = [tttState.aiSymbol, tttState.playerSymbol]; tttInit(); }
@@ -797,10 +800,14 @@ function sudokuInit() {
     const cell = document.createElement('div'); cell.className = 'sudoku-cell'; cell.dataset.index = i; cell.textContent = sudokuState.board[i] || '';
     if (sudokuState.given[i]) cell.classList.add('given'); cell.onclick = () => sudokuSelectCell(i); grid.appendChild(cell);
   }
-  document.getElementById('sudoku-solve')?.onclick = sudokuSolve;
-  document.getElementById('sudoku-clear')?.onclick = sudokuClear;
-  document.getElementById('sudoku-new')?.onclick = sudokuNew;
-  document.getElementById('sudoku-validate')?.onclick = sudokuValidate;
+  const solveButton = document.getElementById('sudoku-solve');
+  if (solveButton) solveButton.onclick = sudokuSolve;
+  const clearButton = document.getElementById('sudoku-clear');
+  if (clearButton) clearButton.onclick = sudokuClear;
+  const newButton = document.getElementById('sudoku-new');
+  if (newButton) newButton.onclick = sudokuNew;
+  const validateButton = document.getElementById('sudoku-validate');
+  if (validateButton) validateButton.onclick = sudokuValidate;
   document.onkeydown = sudokuHandleKeydown;
 }
 
