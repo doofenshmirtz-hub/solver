@@ -1,0 +1,21 @@
+{
+  "name": "solver",
+  "version": "1.0.0",
+  "description": "Rubik's Cube Solver using Cubie Representation (54 stickers → 40 numbers)",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "vitest run"
+  },
+  "keywords": ["rubiks-cube", "solver", "cubie-representation", "kociemba"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
