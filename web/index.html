@@ -3,67 +3,125 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rubik's Cube Solver - Cubie Representation & Kociemba Two-Phase Algorithm">
+  <meta name="theme-color" content="#0a0f1a">
   <title>Rubik's Cube Solver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>🧩 Rubik's Cube Solver</h1>
-      <p class="subtitle">Cubie Representation • Kociemba Two-Phase Algorithm</p>
+      <span class="header-badge">Web Solver v1.0</span>
+      <h1>Rubik's Cube Solver</h1>
+      <p class="subtitle">Cubie Representation • 54 Stickers → 40 Numbers • Kociemba Two-Phase Algorithm</p>
     </header>
 
     <main>
-      <section class="input-section">
-        <h2>Enter Cube State</h2>
-        <p class="hint">Click each sticker to set its color. Centers (position 4) define the color scheme.</p>
+      <!-- Input Section -->
+      <section class="input-section" aria-labelledby="input-heading">
+        <h2 id="input-heading">Enter Cube State</h2>
+        <p class="section-desc">Click each sticker to set its color. Centers (middle of each face) define the color scheme and must follow standard opposites: White↔Yellow, Red↔Orange, Green↔Blue.</p>
 
-        <div class="cube-net" id="cube-net">
-          <!-- Faces will be rendered by JS -->
+        <div class="cube-net-wrapper">
+          <div class="cube-net" id="cube-net" role="grid" aria-label="Rubik's cube net - 6 faces, 9 stickers each">
+            <!-- Faces rendered by JS -->
+          </div>
         </div>
 
-        <div class="color-palette" id="color-palette" role="group" aria-label="Color palette">
+        <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers">
           <!-- Color buttons injected by JS -->
         </div>
 
         <div class="actions">
-          <button id="solve-btn" class="btn primary" disabled>Solve</button>
+          <button id="solve-btn" class="btn primary" disabled aria-describedby="solve-hint">
+            <span class="btn-text">Solve Cube</span>
+          </button>
           <button id="reset-btn" class="btn secondary">Reset</button>
           <button id="random-btn" class="btn secondary">Random Scramble</button>
         </div>
+        <p id="solve-hint" class="hint" style="text-align:center; margin-top:12px; font-size:0.8rem;">Complete all 6 faces with valid centers to enable solving</p>
       </section>
 
-      <section class="output-section" id="output-section" hidden>
-        <h2>Solution</h2>
-        <div class="solution-info">
-          <span id="move-count">0 moves</span>
-          <span id="solve-time"></span>
+      <!-- Output Section -->
+      <section class="output-section" id="output-section" hidden aria-labelledby="output-heading">
+        <h2 id="output-heading">Solution</h2>
+
+        <div class="solution-header">
+          <div class="solution-stats">
+            <div class="stat">
+              <span class="stat-label">Moves</span>
+              <span class="stat-value" id="move-count">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Time</span>
+              <span class="stat-value" id="solve-time">—</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Phase</span>
+              <span class="stat-value success" id="phase-info">G1 Subgroup</span>
+            </div>
+          </div>
+          <button id="copy-btn" class="btn ghost small" hidden aria-label="Copy solution to clipboard">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy
+          </button>
         </div>
-        <div class="moves-container">
-          <div id="moves-display" class="moves-display"></div>
-          <button id="copy-btn" class="btn small" hidden>Copy Moves</button>
+
+        <div class="moves-display" id="moves-display" aria-live="polite" aria-label="Solution moves">
+          <!-- Moves rendered here -->
         </div>
-        <div id="error-display" class="error" hidden></div>
+
+        <div id="error-display" class="error-display" hidden role="alert" aria-live="assertive">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          <span id="error-message"></span>
+        </div>
       </section>
 
-      <section class="visualizer-section" id="visualizer-section" hidden>
-        <h2>Cube Visualization</h2>
-        <canvas id="cube-canvas" width="400" height="400"></canvas>
+      <!-- Visualizer Section -->
+      <section class="visualizer-section" id="visualizer-section" hidden aria-labelledby="viz-heading">
+        <h2 id="viz-heading">Solution Visualization</h2>
+        <p class="section-desc">Watch the cube solve step by step. Use controls to play, pause, or step through moves.</p>
+
+        <div class="canvas-wrapper">
+          <canvas id="cube-canvas" width="500" height="500" aria-label="Animated cube visualization showing solution steps"></canvas>
+        </div>
+
         <div class="viz-controls">
-          <button id="play-btn" class="btn small">▶ Play</button>
-          <button id="pause-btn" class="btn small" hidden>⏸ Pause</button>
-          <button id="step-btn" class="btn small">⏭ Step</button>
-          <input type="range" id="speed-slider" min="100" max="2000" value="500" step="100">
-          <span id="speed-label">500ms</span>
+          <button id="play-btn" class="btn primary small" aria-label="Play animation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></svg>
+            <span>Play</span>
+          </button>
+          <button id="pause-btn" class="btn secondary small" hidden aria-label="Pause animation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            <span>Pause</span>
+          </button>
+          <button id="step-btn" class="btn secondary small" aria-label="Step forward">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></svg><line x1="19" y1="3" x2="19" y2="21"></line></svg>
+            <span>Step</span>
+          </button>
+          <div class="speed-control">
+            <span>Speed</span>
+            <input type="range" id="speed-slider" min="100" max="2000" value="500" step="100" aria-label="Animation speed in milliseconds">
+            <span id="speed-label">500ms</span>
+          </div>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank">Cubie Representation Solver</a> •
-      54 stickers → 40 numbers (8 corners + 12 edges) • Kociemba Two-Phase</p>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a> • 54 stickers → 40 numbers (8 corners + 12 edges) • Kociemba Two-Phase Algorithm</p>
+      <div class="footer-links">
+        <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">GitHub</a>
+        <a href="#" id="about-link">About</a>
+      </div>
     </footer>
   </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <script type="module" src="app.js"></script>
 </body>
