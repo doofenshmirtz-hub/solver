@@ -47,7 +47,7 @@ function generateMoveTables(): Record<string, MoveTable> {
     L: {
       cornerPerm: [0, 2, 6, 3, 4, 1, 5, 7],
       cornerOriDelta: [0, 1, 2, 0, 0, 2, 1, 0],
-      edgePerm: [0, 1, 10, 3, 4, 5, 9, 7, 8, 2, 11, 6],
+      edgePerm: [0, 1, 11, 3, 4, 5, 9, 7, 8, 2, 10, 6],
       edgeOriDelta: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     },
     // B move (Back face clockwise)
