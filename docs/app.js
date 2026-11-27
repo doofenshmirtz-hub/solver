@@ -881,7 +881,14 @@ function sudokuRender() { const g = document.getElementById('sudoku-grid'); if (
 // UTILITIES
 // -----------------------------------------------------------------------------
 
-function hexToRgb(h) { return { r: (h >> 16) & 255, g: (h >> 8) & 255, b: h & 255 }; }
+function hexToRgb(hex) {
+  // COLOR_CSS stores CSS hex strings (for example, "#fefefe"), not integers.
+  // Parse the string before extracting channels; bitwise-coercing a string
+  // produces zero and makes every rendered sticker black.
+  const value = Number.parseInt(String(hex).replace(/^#/, ''), 16);
+  if (!Number.isFinite(value)) return { r: 0, g: 0, b: 0 };
+  return { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255 };
+}
 function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); }
 function showToast(m, t) { const c = document.getElementById('toast-container'); const t2 = document.createElement('div'); t2.className = 'toast ' + (t || ''); t2.textContent = m; c.appendChild(t2); setTimeout(() => t2.remove(), 3000); }
 
@@ -892,17 +899,10 @@ function showToast(m, t) { const c = document.getElementById('toast-container');
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
 
-  // Page-specific init
+  // initApp owns cube creation and reset. Do not construct a second pair of
+  // renderers here: duplicate canvases make pointer handling ambiguous.
   const path = window.location.pathname;
-  if (path.includes('cube.html')) {
-    setTimeout(() => {
-      const inputEl = document.getElementById('cube-3d-input');
-      const visEl = document.getElementById('cube-3d-container');
-      if (inputEl) inputCube = new CubeRenderer(inputEl, 'W');
-      if (visEl) visualizerCube = new CubeRenderer(visEl, 'W');
-      resetAll();
-    }, 100);
-  } else if (path.includes('sudoku.html')) {
+  if (path.includes('sudoku.html')) {
     setTimeout(sudokuInit, 100);
   } else if (path.includes('tictactoe.html')) {
     setTimeout(tttInit, 100);
