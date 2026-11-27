@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Rubik's Cube Solver - Interactive Canvas 2D Cube with Cubie Representation & Kociemba Two-Phase Algorithm">
+  <meta name="description" content="Solver Suite - Rubik's Cube, Sudoku, TicTacToe">
   <meta name="theme-color" content="#0a0f1a">
-  <title>Rubik's Cube Solver</title>
+  <title>Solver Suite</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,10 +13,10 @@
 </head>
 <body>
   <nav class="nav-bar">
-    <a href="../index.html" class="nav-brand">🧩 Solver Suite</a>
+    <a href="index.html" class="nav-brand">🧩 Solver Suite</a>
     <div class="nav-links">
-      <a href="index.html" class="nav-link active">Cube Solver</a>
-      <a href="cube.html" class="nav-link">Algorithms</a>
+      <a href="index.html" class="nav-link active">Home</a>
+      <a href="cube.html" class="nav-link">Rubik's Cube</a>
       <a href="sudoku.html" class="nav-link">Sudoku</a>
       <a href="tictactoe.html" class="nav-link">TicTacToe</a>
     </div>
@@ -24,121 +24,63 @@
 
   <div class="container">
     <header>
-      <span class="header-badge">Cube Solver v3.0</span>
-      <h1>Rubik's Cube Solver</h1>
-      <p class="subtitle">Interactive 2D Canvas Cube • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
+      <span class="header-badge">Solver Suite v3.0</span>
+      <h1>Rubik's Cube & Puzzle Solver</h1>
+      <p class="subtitle">Interactive Canvas 2D Web Games • No Dependencies • All Algorithms</p>
     </header>
 
     <main>
-      <section class="input-section" aria-labelledby="input-heading">
-        <h2 id="input-heading">Enter Cube State</h2>
-        <p class="section-desc">Click stickers on the 2D cube to set colors. Drag to rotate, scroll to zoom. Centers define the color scheme (White↔Yellow, Red↔Orange, Green↔Blue).</p>
-
-        <div class="cube-3d-wrapper">
-          <div id="cube-3d-input" class="cube-3d-container" role="application" aria-label="Interactive 2D Canvas cube - click stickers to change colors"></div>
-        </div>
-
-        <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers on the cube">
-        </div>
-
-        <div class="actions">
-          <button id="solve-btn" class="btn primary" disabled aria-describedby="solve-hint">
-            <span class="btn-text">Solve Cube</span>
-          </button>
-          <button id="reset-btn" class="btn secondary">Reset</button>
-          <button id="random-btn" class="btn secondary">Random Scramble</button>
-        </div>
-        <p id="solve-hint" class="hint" style="text-align:center; margin-top:12px; font-size:0.8rem;">Complete all 6 faces with valid centers to enable solving</p>
-
-        <details class="input-guide">
-          <summary>How to input your cube</summary>
-          <div class="guide-content">
-            <p>Hold your cube with <strong>White on top</strong> and <strong>Green in front</strong> (standard orientation).</p>
-            <div class="face-order">
-              <span class="face-tag U">U (Up/White)</span>
-              <span class="face-tag R">R (Right/Red)</span>
-              <span class="face-tag F">F (Front/Green)</span>
-              <span class="face-tag D">D (Down/Yellow)</span>
-              <span class="face-tag L">L (Left/Orange)</span>
-              <span class="face-tag B">B (Back/Blue)</span>
-            </div>
-            <p>Select a color from the palette, then click a sticker on the cube. The centers (middle stickers) must follow standard opposites.</p>
+      <section class="game-cards">
+        <a href="cube.html" class="card" role="button" tabindex="0" aria-label="Rubik's Cube Solver">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4zm12 2c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5t1.5-.5c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-9-3h18v2H12zM5.75 9.75c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m5.25 12c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83"/></svg>
           </div>
-        </details>
-      </section>
-
-      <section class="output-section" id="output-section" hidden aria-labelledby="output-heading">
-        <h2 id="output-heading">Solution</h2>
-
-        <div class="solution-header">
-          <div class="solution-stats">
-            <div class="stat">
-              <span class="stat-label">Moves</span>
-              <span class="stat-value" id="move-count">0</span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">Time</span>
-              <span class="stat-value" id="solve-time">—</span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">Phase</span>
-              <span class="stat-value success" id="phase-info">G1 Subgroup</span>
-            </div>
+          <div class="card-content">
+            <h3>Rubik's Cube Solver</h3>
+            <p class="card-desc">54 stickers → 40 numbers (Cubie Representation) • Kociemba Two-Phase Algorithm • Canvas 2D • Click & drag to interact</p>
           </div>
-          <button id="copy-btn" class="btn ghost small" hidden aria-label="Copy solution to clipboard">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            Copy
-          </button>
-        </div>
+        </a>
 
-        <div class="moves-display" id="moves-display" aria-live="polite" aria-label="Solution moves"></div>
-
-        <div id="error-display" class="error-display" hidden role="alert" aria-live="assertive">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-          <span id="error-message"></span>
-        </div>
-      </section>
-
-      <section class="visualizer-section" id="visualizer-section" hidden aria-labelledby="viz-heading">
-        <h2 id="viz-heading">Solution Visualization</h2>
-        <p class="section-desc">Watch the 2D cube solve step by step. Drag to rotate view, use controls to play through the solution.</p>
-
-        <div class="cube-3d-wrapper">
-          <div id="cube-3d-container" class="cube-3d-container" role="application" aria-label="Animated 2D cube showing solution steps"></div>
-        </div>
-
-        <div class="viz-controls">
-          <button id="play-btn" class="btn primary small" aria-label="Play animation">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-            <span>Play</span>
-          </button>
-          <button id="pause-btn" class="btn secondary small" hidden aria-label="Pause animation">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-            <span>Pause</span>
-          </button>
-          <button id="step-btn" class="btn secondary small" aria-label="Step forward">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon><line x1="19" y1="3" x2="19" y2="21"></line></svg>
-            <span>Step</span>
-          </button>
-          <div class="speed-control">
-            <span>Speed</span>
-            <input type="range" id="speed-slider" min="100" max="2000" value="500" step="100" aria-label="Animation speed in milliseconds">
-            <span id="speed-label">500ms</span>
+        <a href="cube-algorithms.html" class="card" role="button" tabindex="0" aria-label="Cube Algorithms & Methods">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4zm12 2c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5t1.5-.5c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-9-3h18v2H12zM5.75 9.75c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m5.25 12c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83"/></svg>
           </div>
-        </div>
+          <div class="card-content">
+            <h3>Cube Algorithms & Methods</h3>
+            <p class="card-desc">CFOP (Fridrich), Beginner Method, Roux, ZZ, R2 • OLL/PLL tables • 41+ algorithms • Method guides with step-by-step instructions</p>
+          </div>
+        </a>
+
+        <a href="sudoku.html" class="card" role="button" tabindex="0" aria-label="Sudoku Solver">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v18h18v-3.06c0-.7-.19-1.35-.53-1.97L9.44 5.95c-.47-.47-1.03-.7-1.61-.7-1.06 0-1.43.35-1.43.88v1.39c0 .53.27 1.02.72 1.13l5.28 5.26-1.42 2.05c-.31.45-.68.73-1.09.73-.71 0-1.08-.58-.59-1.29l3.17-4.16.07-.12c.16-.25.23-.57.23-.88v-1.44c0-.7.18-1.29.53-1.97L18.06 4.3c-.47-.47-.95-.7-1.45-.7-1.06 0-1.43.35-1.43.88v3.06H3z"/></svg>
+          </div>
+          <div class="card-content">
+            <h3>Sudoku Solver</h3>
+            <p class="card-desc">9×9 grid backtracking solver • Click cells to enter numbers • Auto-solve • Puzzle generator • Difficulty levels</p>
+          </div>
+        </a>
+
+        <a href="tictactoe.html" class="card" role="button" tabindex="0" aria-label="Tic-Tac-Toe AI">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4zm3 3v10h14v-10H7zm3 3v10h10v-10H10z"/></svg>
+          </div>
+          <div class="card-content">
+            <h3>Tic-Tac-Toe AI</h3>
+            <p class="card-desc">Play against Minimax AI • 3×3 grid • AI difficulty levels (Easy/Medium/Hard) • Score tracking</p>
+          </div>
+        </a>
       </section>
     </main>
 
     <footer>
-      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a> • 54 stickers → 40 numbers (8 corners + 12 edges) • Kociemba Two-Phase Algorithm</p>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a> • 54 stickers → 40 numbers (8 corners + 12 edges) • Canvas 2D Web Games • No external dependencies</p>
       <div class="footer-links">
-        <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">GitHub Repository</a>
         <a href="#" id="about-link">About</a>
       </div>
     </footer>
   </div>
-
-  <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>

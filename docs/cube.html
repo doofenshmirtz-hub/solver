@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Rubik's Cube Algorithms - CFOP, Beginner, Roux, ZZ, R2 Methods">
+  <meta name="description" content="Rubik's Cube Solver - Interactive Canvas 2D Cube with Cubie Representation & Kociemba Two-Phase Algorithm">
   <meta name="theme-color" content="#0a0f1a">
-  <title>Cube Algorithms & Methods</title>
+  <title>Rubik's Cube Solver</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -13,10 +13,10 @@
 </head>
 <body>
   <nav class="nav-bar">
-    <a href="../index.html" class="nav-brand">🧩 Solver Suite</a>
+    <a href="index.html" class="nav-brand">🧩 Solver Suite</a>
     <div class="nav-links">
-      <a href="index.html" class="nav-link">Cube Solver</a>
-      <a href="cube.html" class="nav-link active">Algorithms</a>
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="cube.html" class="nav-link active">Rubik's Cube</a>
       <a href="sudoku.html" class="nav-link">Sudoku</a>
       <a href="tictactoe.html" class="nav-link">TicTacToe</a>
     </div>
@@ -24,226 +24,121 @@
 
   <div class="container">
     <header>
-      <span class="header-badge">Cube Algorithms</span>
-      <h1>Cube Methods & Algorithms</h1>
-      <p class="subtitle">Complete algorithm library for all popular solving methods</p>
+      <span class="header-badge">Cube Solver v3.0</span>
+      <h1>Rubik's Cube Solver</h1>
+      <p class="subtitle">Interactive 2D Canvas Cube • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
     </header>
 
     <main>
-      <!-- Beginner Method -->
-      <section class="method-section" id="beginner">
-        <h2>🟢 Beginner Method (Layer by Layer)</h2>
-        <p class="method-desc">The easiest method to learn. Solves the cube layer by layer: Cross → Corners → Middle Layer → Yellow Cross → Yellow Edges → Yellow Corners → Orient Corners.</p>
+      <section class="input-section" aria-labelledby="input-heading">
+        <h2 id="input-heading">Enter Cube State</h2>
+        <p class="section-desc">Click stickers on the 2D cube to set colors. Drag to rotate, scroll to zoom. Centers define the color scheme (White↔Yellow, Red↔Orange, Green↔Blue).</p>
 
-        <div class="algorithms-grid">
-          <div class="algo-card">
-            <h4>White Cross</h4>
-            <p>Intuitive - place 4 white edges around white center matching side centers</p>
-          </div>
+        <div class="cube-3d-wrapper">
+          <div id="cube-3d-input" class="cube-3d-container" role="application" aria-label="Interactive 2D Canvas cube - click stickers to change colors"></div>
+        </div>
 
-          <div class="algo-card">
-            <h4>White Corners</h4>
-            <code class="algo">R U R' U'</code>
-            <p>Repeat until corner is solved. Hold cube with corner at URF.</p>
-          </div>
+        <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers on the cube">
+        </div>
 
-          <div class="algo-card">
-            <h4>Middle Layer Edges</h4>
-            <code class="algo">U R U' R' U' F' U F</code>
-            <p>For edge going right. Mirror: U' L' U L U F U' F' for left.</p>
-          </div>
+        <div class="actions">
+          <button id="solve-btn" class="btn primary" disabled aria-describedby="solve-hint">
+            <span class="btn-text">Solve Cube</span>
+          </button>
+          <button id="reset-btn" class="btn secondary">Reset</button>
+          <button id="random-btn" class="btn secondary">Random Scramble</button>
+        </div>
+        <p id="solve-hint" class="hint" style="text-align:center; margin-top:12px; font-size:0.8rem;">Complete all 6 faces with valid centers to enable solving</p>
 
-          <div class="algo-card">
-            <h4>Yellow Cross</h4>
-            <code class="algo">F R U R' U' F'</code>
-            <p>Dot → Line → L-shape → Cross. Repeat as needed.</p>
+        <details class="input-guide">
+          <summary>How to input your cube</summary>
+          <div class="guide-content">
+            <p>Hold your cube with <strong>White on top</strong> and <strong>Green in front</strong> (standard orientation).</p>
+            <div class="face-order">
+              <span class="face-tag U">U (Up/White)</span>
+              <span class="face-tag R">R (Right/Red)</span>
+              <span class="face-tag F">F (Front/Green)</span>
+              <span class="face-tag D">D (Down/Yellow)</span>
+              <span class="face-tag L">L (Left/Orange)</span>
+              <span class="face-tag B">B (Back/Blue)</span>
+            </div>
+            <p>Select a color from the palette, then click a sticker on the cube. The centers (middle stickers) must follow standard opposites.</p>
           </div>
+        </details>
+      </section>
 
-          <div class="algo-card">
-            <h4>Yellow Edges</h4>
-            <code class="algo">R U R' U R U2 R' U</code>
-            <p>Align 2 edges, hold them at back/left, then apply.</p>
-          </div>
+      <section class="output-section" id="output-section" hidden aria-labelledby="output-heading">
+        <h2 id="output-heading">Solution</h2>
 
-          <div class="algo-card">
-            <h4>Yellow Corners Position</h4>
-            <code class="algo">U R U' L' U R' U' L</code>
-            <p>Cycle 3 corners. Repeat until all in correct spots.</p>
+        <div class="solution-header">
+          <div class="solution-stats">
+            <div class="stat">
+              <span class="stat-label">Moves</span>
+              <span class="stat-value" id="move-count">0</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Time</span>
+              <span class="stat-value" id="solve-time">—</span>
+            </div>
+            <div class="stat">
+              <span class="stat-label">Phase</span>
+              <span class="stat-value success" id="phase-info">G1 Subgroup</span>
+            </div>
           </div>
+          <button id="copy-btn" class="btn ghost small" hidden aria-label="Copy solution to clipboard">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy
+          </button>
+        </div>
 
-          <div class="algo-card">
-            <h4>Orient Yellow Corners</h4>
-            <code class="algo">R' D' R D</code>
-            <p>Hold unsolved corner at URF. Repeat 2-4 times. Then U to next.</p>
-          </div>
+        <div class="moves-display" id="moves-display" aria-live="polite" aria-label="Solution moves"></div>
+
+        <div id="error-display" class="error-display" hidden role="alert" aria-live="assertive">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          <span id="error-message"></span>
         </div>
       </section>
 
-      <!-- CFOP Method -->
-      <section class="method-section" id="cfop">
-        <h2>🔵 CFOP (Fridrich) - Speedcubing Standard</h2>
-        <p class="method-desc">Cross → F2L (First 2 Layers) → OLL (Orient Last Layer) → PLL (Permute Last Layer). Used by most world record holders.</p>
+      <section class="visualizer-section" id="visualizer-section" hidden aria-labelledby="viz-heading">
+        <h2 id="viz-heading">Solution Visualization</h2>
+        <p class="section-desc">Watch the 2D cube solve step by step. Drag to rotate view, use controls to play through the solution.</p>
 
-        <h3>F2L - First Two Layers</h3>
-        <p class="method-desc">41 cases. Solve corner-edge pairs and insert. Key cases:</p>
-        <div class="algorithms-grid">
-          <div class="algo-card">
-            <h4>Case 1 - Basic Pair</h4>
-            <code class="algo">R U R'</code>
-          </div>
-          <div class="algo-card">
-            <h4>Case 2 - Separated</h4>
-            <code class="algo">U R U' R'</code>
-          </div>
-          <div class="algo-card">
-            <h4>Case 3 - Top Pair</h4>
-            <code class="algo">R U2 R' U' R U R'</code>
-          </div>
+        <div class="cube-3d-wrapper">
+          <div id="cube-3d-container" class="cube-3d-container" role="application" aria-label="Animated 2D cube showing solution steps"></div>
         </div>
 
-        <h3>OLL - Orient Last Layer (57 algorithms)</h3>
-        <p class="method-desc">Make all yellow facelets face up. Top 10 most common:</p>
-        <div class="algorithms-grid">
-          <div class="algo-card">
-            <h4>OLL 1 - Cross</h4>
-            <code class="algo">F R U R' U' F'</code>
-          </div>
-          <div class="algo-card">
-            <h4>OLL 2 - Line</h4>
-            <code class="algo">F R U R' U' F' f R U R' U' f'</code>
-          </div>
-          <div class="algo-card">
-            <h4>OLL 3 - Dot</h4>
-            <code class="algo">F R U R' U' F' f R U R' U' f'</code>
-          </div>
-          <div class="algo-card">
-            <h4>OLL 22 - Sexy Move</h4>
-            <code class="algo">R U R' U R U2 R'</code>
-          </div>
-          <div class="algo-card">
-            <h4>OLL 23 - Anti-Sexy</h4>
-            <code class="algo">R U2 R' U' R U' R'</code>
-          </div>
-          <div class="algo-card">
-            <h4>OLL 24 - Sune</h4>
-            <code class="algo">R U R' U R U2 R'</code>
-          </div>
-          <div class="algo-card">
-            <h4>OLL 25 - Anti-Sune</h4>
-            <code class="algo">R U2 R' U' R U' R'</code>
-          </div>
-          <div class="algo-card">
-            <h4>OLL 27 - All Corners</h4>
-            <code class="algo">R U R' U' R' F R2 U' R' U' R U R' F'</code>
-          </div>
-        </div>
-
-        <h3>PLL - Permute Last Layer (21 algorithms)</h3>
-        <p class="method-desc">Position pieces correctly. Essential PLLs:</p>
-        <div class="algorithms-grid">
-          <div class="algo-card">
-            <h4>PLL Aa - 3-cycle</h4>
-            <code class="algo">R U' R U R U R U' R' U' R2</code>
-          </div>
-          <div class="algo-card">
-            <h4>PLL Ab - Reverse</h4>
-            <code class="algo">R2 U R U R' U' R' U' R' U R'</code>
-          </div>
-          <div class="algo-card">
-            <h4>PLL E - Edge Swap</h4>
-            <code class="algo">M2 U M U2 M U M2</code>
-          </div>
-          <div class="algo-card">
-            <h4>PLL H - Double Swap</h4>
-            <code class="algo">M2 U M2 U2 M2 U M2</code>
-          </div>
-          <div class="algo-card">
-            <h4>PLL T - T-Perm</h4>
-            <code class="algo">R U R' U' R' F R2 U' R' U' R U R' F'</code>
-          </div>
-          <div class="algo-card">
-            <h4>PLL Jb - J-Perm</h4>
-            <code class="algo">R U R' F' R U R' U' R' F R2 U' R' U'</code>
-          </div>
-          <div class="algo-card">
-            <h4>PLL Y - Y-Perm</h4>
-            <code class="algo">F R U' R' U' R U R' F' R U R' U' R' F R F'</code>
-          </div>
-        </div>
-      </section>
-
-      <!-- Roux Method -->
-      <section class="method-section" id="roux">
-        <h2>🟣 Roux Method</h2>
-        <p class="method-desc">Block building method: First Block → Second Block → CMLL → LSE (Last Six Edges). Fewer algorithms, intuitive.</p>
-        <div class="algorithms-grid">
-          <div class="algo-card">
-            <h4>First Block (FB)</h4>
-            <p>Build 1x2x3 block on left (DL, DFL, DLB, FL, BL, UL). Intuitive.</p>
-          </div>
-          <div class="algo-card">
-            <h4>Second Block (SB)</h4>
-            <p>Build 1x2x3 on right (DR, DFR, DRB, FR, BR, UR). Intuitive.</p>
-          </div>
-          <div class="algo-card">
-            <h4>CMLL (46 algs)</h4>
-            <code class="algo">R U2 R' U' R U R' U' R U' R'</code>
-            <p>Orient + permute last layer corners. Example: Sune.</p>
-          </div>
-          <div class="algo-card">
-            <h4>LSE (Last Six Edges)</h4>
-            <code class="algo">M U M' U2 M' U M'</code>
-            <p>Orient edges → permute edges with M moves only.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- ZZ Method -->
-      <section class="method-section" id="zz">
-        <h2>🟠 ZZ Method</h2>
-        <p class="method-desc">EOLine → F2L → LL. Edge orientation first means no F/B moves in F2L, simpler last layer.</p>
-        <div class="algorithms-grid">
-          <div class="algo-card">
-            <h4>EOLine</h4>
-            <code class="algo">F (R U R' U') F'</code>
-            <p>Orient all edges while solving DF/DB. Then F2L with only R/U/L/D.</p>
-          </div>
-          <div class="algo-card">
-            <h4>ZZ F2L</h4>
-            <p>Only R, U, L, D moves. No cube rotations needed.</p>
-          </div>
-          <div class="algo-card">
-            <h4>ZBLL (493 algs)</h4>
-            <p>Solve last layer in 1 look. Most use OCLL+PLL subset.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- R2 Method -->
-      <section class="method-section" id="r2">
-        <h2>🔴 R2 Method</h2>
-        <p class="method-desc">Uses mostly R2, U, and f moves. Good for one-handed or fewest moves.</p>
-        <div class="algorithms-grid">
-          <div class="algo-card">
-            <h4>Cross + EO</h4>
-            <code class="algo">R2 U R2 U' R2</code>
-          </div>
-          <div class="algo-card">
-            <h4>Corner Position</h4>
-            <code class="algo">R2 U R2 U2 R2</code>
-          </div>
-          <div class="algo-card">
-            <h4>Parity Fix</h4>
-            <code class="algo">r U2 r' U2 r' F r F'</code>
+        <div class="viz-controls">
+          <button id="play-btn" class="btn primary small" aria-label="Play animation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            <span>Play</span>
+          </button>
+          <button id="pause-btn" class="btn secondary small" hidden aria-label="Pause animation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
+            <span>Pause</span>
+          </button>
+          <button id="step-btn" class="btn secondary small" aria-label="Step forward">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon><line x1="19" y1="3" x2="19" y2="21"></line></svg>
+            <span>Step</span>
+          </button>
+          <div class="speed-control">
+            <span>Speed</span>
+            <input type="range" id="speed-slider" min="100" max="2000" value="500" step="100" aria-label="Animation speed in milliseconds">
+            <span id="speed-label">500ms</span>
           </div>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a></p>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a> • 54 stickers → 40 numbers (8 corners + 12 edges) • Kociemba Two-Phase Algorithm</p>
+      <div class="footer-links">
+        <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">GitHub</a>
+        <a href="#" id="about-link">About</a>
+      </div>
     </footer>
   </div>
+
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <script src="app.js"></script>
 </body>
