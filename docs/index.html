@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Rubik's Cube Solver - 3D Interactive Cube with Cubie Representation & Kociemba Two-Phase Algorithm">
+  <meta name="description" content="Rubik's Cube Solver - Interactive 3D Cube with Cubie Representation & Kociemba Two-Phase Algorithm">
   <meta name="theme-color" content="#0a0f1a">
   <title>Rubik's Cube Solver</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,9 +14,9 @@
 <body>
   <div class="container">
     <header>
-      <span class="header-badge">3D Web Solver v2.0</span>
+      <span class="header-badge">Web Solver v3.0</span>
       <h1>Rubik's Cube Solver</h1>
-      <p class="subtitle">Interactive 3D Cube • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
+      <p class="subtitle">Interactive 3D Cube (Canvas 2D) • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
     </header>
 
     <main>
@@ -54,7 +54,7 @@
               <span class="face-tag L">L (Left/Orange)</span>
               <span class="face-tag B">B (Back/Blue)</span>
             </div>
-            <p>Click each sticker on the 3D cube, select a color from the palette, then click the sticker again. The centers (middle stickers) must follow standard opposites.</p>
+            <p>Select a color from the palette, then click a sticker on the 3D cube. The centers (middle stickers) must follow standard opposites.</p>
           </div>
         </details>
       </section>
@@ -137,6 +137,6 @@
   <!-- Toast Container -->
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
-  <script type="module" src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

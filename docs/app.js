@@ -1,134 +1,9 @@
 // ============================================================================
-// Rubik's Cube Solver - 3D Web App with Three.js (Bundled)
-// Uses local Three.js fallback + robust error handling
+// Rubik's Cube Solver - SIMPLE & WORKING (Canvas 2D only, no dependencies)
 // ============================================================================
 
-// Three.js minimal bundle (inlined for reliability)
-// This is a stripped-down version with only what we need
-const THREE = (() => {
-  // Minimal Three.js core classes needed for the cube
-  // Using a simplified approach with canvas 2D fallback as primary
-  // Three.js loaded dynamically if available
-
-  let threeModule = null;
-  let orbitControls = null;
-
-  async function load() {
-    // Try multiple CDNs
-    const cdns = [
-      'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js',
-      'https://unpkg.com/three@0.165.0/build/three.module.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.165.0/three.module.js',
-    ];
-
-    for (const cdn of cdns) {
-      try {
-        const mod = await import(cdn);
-        threeModule = mod;
-        console.log('Three.js loaded from:', cdn);
-        break;
-      } catch (e) {
-        console.warn('Failed to load from', cdn, e.message);
-      }
-    }
-
-    if (threeModule) {
-      try {
-        const controlsMod = await import('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js');
-        orbitControls = controlsMod.OrbitControls;
-      } catch (e) {
-        console.warn('OrbitControls failed to load:', e.message);
-        // Simple fallback orbit controls
-        orbitControls = createFallbackOrbitControls();
-      }
-    }
-
-    return { THREE: threeModule, OrbitControls: orbitControls };
-  }
-
-  return { load, get THREE() { return threeModule; }, get OrbitControls() { return orbitControls; } };
-})();
-
-// Simple fallback OrbitControls
-function createFallbackOrbitControls() {
-  return class FallbackOrbitControls {
-    constructor(camera, domElement) {
-      this.camera = camera;
-      this.domElement = domElement;
-      this.enableDamping = true;
-      this.dampingFactor = 0.05;
-      this.enablePan = false;
-      this.minDistance = 3;
-      this.maxDistance = 10;
-      this.autoRotate = false;
-
-      this._spherical = new THREE.Spherical();
-      this._spherical.setFromVector3(camera.position);
-      this._target = new THREE.Vector3(0, 0, 0);
-
-      this._dragging = false;
-      this._lastPos = { x: 0, y: 0 };
-
-      domElement.addEventListener('pointerdown', this._onDown.bind(this));
-      domElement.addEventListener('pointermove', this._onMove.bind(this));
-      domElement.addEventListener('pointerup', this._onUp.bind(this));
-      domElement.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
-    }
-
-    _onDown(e) {
-      if (e.button !== 0) return;
-      this._dragging = true;
-      this._lastPos = { x: e.clientX, y: e.clientY };
-      this.domElement.style.cursor = 'grabbing';
-    }
-
-    _onMove(e) {
-      if (!this._dragging) return;
-      const dx = e.clientX - this._lastPos.x;
-      const dy = e.clientY - this._lastPos.y;
-      this._lastPos = { x: e.clientX, y: e.clientY };
-
-      this._spherical.theta -= dx * 0.01;
-      this._spherical.phi += dy * 0.01;
-      this._spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this._spherical.phi));
-      this._updateCamera();
-    }
-
-    _onUp() {
-      this._dragging = false;
-      this.domElement.style.cursor = 'grab';
-    }
-
-    _onWheel(e) {
-      e.preventDefault();
-      this._spherical.radius += e.deltaY * 0.01;
-      this._spherical.radius = Math.max(this.minDistance, Math.min(this.maxDistance, this._spherical.radius));
-      this._updateCamera();
-    }
-
-    _updateCamera() {
-      const pos = new THREE.Vector3().setFromSpherical(this._spherical);
-      this.camera.position.copy(pos).add(this._target);
-      this.camera.lookAt(this._target);
-    }
-
-    update() {
-      if (this.enableDamping && !this._dragging) {
-        // Damping not implemented in fallback
-      }
-    }
-
-    dispose() {
-      this.domElement.removeEventListener('pointerdown', this._onDown);
-      this.domElement.removeEventListener('pointermove', this._onMove);
-      this.domElement.removeEventListener('pointerup', this._onUp);
-      this.domElement.removeEventListener('wheel', this._onWheel);
-    }
-  };
-}
-
 // -----------------------------------------------------------------------------
-// CONSTANTS & TYPES
+// CONSTANTS
 // -----------------------------------------------------------------------------
 
 const Face = { U: 'U', R: 'R', F: 'F', D: 'D', L: 'L', B: 'B' };
@@ -177,27 +52,23 @@ const EDGE_STICKER_MAP = [
 const BASIC_MOVES = ['U', "U'", 'U2', 'R', "R'", 'R2', 'F', "F'", 'F2', 'D', "D'", 'D2', 'L', "L'", 'L2', 'B', "B'", 'B2'];
 
 const SOLVED_STATE = {
-  cornerPos: [0, 1, 2, 3, 4, 5, 6, 7],
-  cornerOri: [0, 0, 0, 0, 0, 0, 0, 0],
-  edgePos: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-  edgeOri: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  cornerPos: [0,1,2,3,4,5,6,7], cornerOri: [0,0,0,0,0,0,0,0],
+  edgePos: [0,1,2,3,4,5,6,7,8,9,10,11], edgeOri: [0,0,0,0,0,0,0,0,0,0,0,0],
 };
 
 const STANDARD_COLOR_TO_FACE = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
 
 const FACE_CONFIG = {
-  U: { normal: [0, 1, 0], rot: [0, 0, 0], pos: [0, 1.05, 0] },
-  D: { normal: [0, -1, 0], rot: [Math.PI, 0, 0], pos: [0, -1.05, 0] },
-  F: { normal: [0, 0, 1], rot: [-Math.PI/2, 0, 0], pos: [0, 0, 1.05] },
-  B: { normal: [0, 0, -1], rot: [Math.PI/2, 0, 0], pos: [0, 0, -1.05] },
-  R: { normal: [1, 0, 0], rot: [0, 0, -Math.PI/2], pos: [1.05, 0, 0] },
-  L: { normal: [-1, 0, 0], rot: [0, 0, Math.PI/2], pos: [-1.05, 0, 0] },
+  U: { normal: [0,1,0], rot: [0,0,0], pos: [0,1.05,0] },
+  D: { normal: [0,-1,0], rot: [Math.PI,0,0], pos: [0,-1.05,0] },
+  F: { normal: [0,0,1], rot: [-Math.PI/2,0,0], pos: [0,0,1.05] },
+  B: { normal: [0,0,-1], rot: [Math.PI/2,0,0], pos: [0,0,-1.05] },
+  R: { normal: [1,0,0], rot: [0,0,-Math.PI/2], pos: [1.05,0,0] },
+  L: { normal: [-1,0,0], rot: [0,0,Math.PI/2], pos: [-1.05,0,0] },
 };
 
-const COLOR_HEX = {
-  W: 0xfefefe, Y: 0xfde047, R: 0xf87171,
-  O: 0xfb923c, G: 0x4ade80, B: 0x60a5fa,
-};
+const COLOR_HEX = { W: 0xfefefe, Y: 0xfde047, R: 0xf87171, O: 0xfb923c, G: 0x4ade80, B: 0x60a5fa };
+const COLOR_CSS = { W: '#fefefe', Y: '#fde047', R: '#f87171', O: '#fb923c', G: '#4ade80', B: '#60a5fa' };
 
 // -----------------------------------------------------------------------------
 // MOVE TABLES
@@ -206,1125 +77,329 @@ const COLOR_HEX = {
 function generateMoveTables() {
   const tables = {};
   const moveDefs = {
-    U: { cornerPerm: [3,0,1,2,4,5,6,7], cornerOriDelta: [0,0,0,0,0,0,0,0], edgePerm: [3,0,1,2,4,5,6,7,8,9,10,11], edgeOriDelta: [0,0,0,0,0,0,0,0,0,0,0,0] },
-    R: { cornerPerm: [4,1,2,0,7,5,6,3], cornerOriDelta: [2,0,0,1,1,0,0,2], edgePerm: [8,1,2,3,11,5,6,7,4,9,10,0], edgeOriDelta: [0,0,0,0,0,0,0,0,0,0,0,0] },
-    F: { cornerPerm: [1,5,2,3,0,4,6,7], cornerOriDelta: [1,2,0,0,2,1,0,0], edgePerm: [0,9,2,3,4,8,6,7,1,5,10,11], edgeOriDelta: [0,1,0,0,0,1,0,0,1,1,0,0] },
-    D: { cornerPerm: [0,1,2,3,5,6,7,4], cornerOriDelta: [0,0,0,0,0,0,0,0], edgePerm: [0,1,2,3,5,6,7,4,8,9,10,11], edgeOriDelta: [0,0,0,0,0,0,0,0,0,0,0,0] },
-    L: { cornerPerm: [0,2,6,3,4,1,5,7], cornerOriDelta: [0,1,2,0,0,2,1,0], edgePerm: [0,1,10,3,4,5,9,7,8,2,11,6], edgeOriDelta: [0,0,0,0,0,0,0,0,0,0,0,0] },
-    B: { cornerPerm: [0,1,3,7,4,5,2,6], cornerOriDelta: [0,0,1,2,0,0,2,1], edgePerm: [0,1,2,11,4,5,6,10,8,9,3,7], edgeOriDelta: [0,0,0,1,0,0,0,1,0,0,1,1] },
+    U: { cp: [3,0,1,2,4,5,6,7], co: [0,0,0,0,0,0,0,0], ep: [3,0,1,2,4,5,6,7,8,9,10,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
+    R: { cp: [4,1,2,0,7,5,6,3], co: [2,0,0,1,1,0,0,2], ep: [8,1,2,3,11,5,6,7,4,9,10,0], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
+    F: { cp: [1,5,2,3,0,4,6,7], co: [1,2,0,0,2,1,0,0], ep: [0,9,2,3,4,8,6,7,1,5,10,11], eo: [0,1,0,0,0,1,0,0,1,1,0,0] },
+    D: { cp: [0,1,2,3,5,6,7,4], co: [0,0,0,0,0,0,0,0], ep: [0,1,2,3,5,6,7,4,8,9,10,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
+    L: { cp: [0,2,6,3,4,1,5,7], co: [0,1,2,0,0,2,1,0], ep: [0,1,10,3,4,5,9,7,8,2,11,6], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
+    B: { cp: [0,1,3,7,4,5,2,6], co: [0,0,1,2,0,0,2,1], ep: [0,1,2,11,4,5,6,10,8,9,3,7], eo: [0,0,0,1,0,0,0,1,0,0,1,1] },
   };
   const applyPerm = (p1, p2) => p1.map(i => p2[i]);
-  const applyOri = (perm, oriDelta) => perm.map(i => oriDelta[i]);
-  const addOri = (ori1, ori2, mod) => ori1.map((v, i) => (v + ori2[i]) % mod);
-  for (const [baseMove, def] of Object.entries(moveDefs)) {
-    tables[baseMove] = { ...def, cornerPerm: [...def.cornerPerm], cornerOriDelta: [...def.cornerOriDelta], edgePerm: [...def.edgePerm], edgeOriDelta: [...def.edgeOriDelta] };
-    const cp1 = applyPerm(def.cornerPerm, def.cornerPerm);
-    const cp2 = applyPerm(cp1, def.cornerPerm);
-    const co1 = addOri(applyOri(def.cornerPerm, def.cornerOriDelta), def.cornerOriDelta, 3);
-    const co2 = addOri(co1, def.cornerOriDelta, 3);
-    const ep1 = applyPerm(def.edgePerm, def.edgePerm);
-    const ep2 = applyPerm(ep1, def.edgePerm);
-    const eo1 = addOri(applyOri(def.edgePerm, def.edgeOriDelta), def.edgeOriDelta, 2);
-    const eo2 = addOri(eo1, def.edgeOriDelta, 2);
-    tables[baseMove + "'"] = { cornerPerm: cp2, cornerOriDelta: co2, edgePerm: ep2, edgeOriDelta: eo2 };
-    tables[baseMove + '2'] = { cornerPerm: cp1, cornerOriDelta: co1, edgePerm: ep1, edgeOriDelta: eo1 };
+  const applyOri = (perm, d) => perm.map(i => d[i]);
+  const addOri = (a, b, m) => a.map((v,i) => (v + b[i]) % m);
+  for (const [m, d] of Object.entries(moveDefs)) {
+    tables[m] = { cp: [...d.cp], co: [...d.co], ep: [...d.ep], eo: [...d.eo] };
+    const cp1 = applyPerm(d.cp, d.cp), cp2 = applyPerm(cp1, d.cp);
+    const co1 = addOri(applyOri(d.cp, d.co), d.co, 3), co2 = addOri(co1, d.co, 3);
+    const ep1 = applyPerm(d.ep, d.ep), ep2 = applyPerm(ep1, d.ep);
+    const eo1 = addOri(applyOri(d.ep, d.eo), d.eo, 2), eo2 = addOri(eo1, d.eo, 2);
+    tables[m+"'"] = { cp: cp2, co: co2, ep: ep2, eo: eo2 };
+    tables[m+'2'] = { cp: cp1, co: co1, ep: ep1, eo: eo1 };
   }
   return tables;
 }
-
 const MOVE_TABLES = generateMoveTables();
 
-function applyMove(state, moveTable) {
-  const newState = { cornerPos: new Array(8), cornerOri: new Array(8), edgePos: new Array(12), edgeOri: new Array(12) };
-  for (let i = 0; i < 8; i++) {
-    newState.cornerPos[i] = state.cornerPos[moveTable.cornerPerm[i]];
-    newState.cornerOri[i] = (state.cornerOri[moveTable.cornerPerm[i]] + moveTable.cornerOriDelta[i]) % 3;
-  }
-  for (let i = 0; i < 12; i++) {
-    newState.edgePos[i] = state.edgePos[moveTable.edgePerm[i]];
-    newState.edgeOri[i] = (state.edgeOri[moveTable.edgePerm[i]] + moveTable.edgeOriDelta[i]) % 2;
-  }
-  return newState;
+function applyMove(s, mt) {
+  return {
+    cornerPos: mt.cp.map((_,i) => s.cornerPos[mt.cp[i]]),
+    cornerOri: mt.cp.map((_,i) => (s.cornerOri[mt.cp[i]] + mt.co[i]) % 3),
+    edgePos: mt.ep.map((_,i) => s.edgePos[mt.ep[i]]),
+    edgeOri: mt.ep.map((_,i) => (s.edgeOri[mt.ep[i]] + mt.eo[i]) % 2),
+  };
 }
-
-function applyMoves(state, moves) {
-  let current = state;
-  for (const m of moves) current = applyMove(current, MOVE_TABLES[m]);
-  return current;
-}
-
-function equalsCube(a, b) {
-  return a.cornerPos.every((v, i) => v === b.cornerPos[i]) &&
-         a.cornerOri.every((v, i) => v === b.cornerOri[i]) &&
-         a.edgePos.every((v, i) => v === b.edgePos[i]) &&
-         a.edgeOri.every((v, i) => v === b.edgeOri[i]);
-}
-
-function cloneState(state) {
-  return { cornerPos: [...state.cornerPos], cornerOri: [...state.cornerOri], edgePos: [...state.edgePos], edgeOri: [...state.edgeOri] };
-}
+function applyMoves(s, ms) { for (const m of ms) s = applyMove(s, MOVE_TABLES[m]); return s; }
+function equalsCube(a,b) { return a.cornerPos.every((v,i)=>v===b.cornerPos[i]) && a.cornerOri.every((v,i)=>v===b.cornerOri[i]) && a.edgePos.every((v,i)=>v===b.edgePos[i]) && a.edgeOri.every((v,i)=>v===b.edgeOri[i]); }
+function cloneState(s) { return { cornerPos:[...s.cornerPos], cornerOri:[...s.cornerOri], edgePos:[...s.edgePos], edgeOri:[...s.edgeOri] }; }
 
 // -----------------------------------------------------------------------------
 // INPUT PARSING
 // -----------------------------------------------------------------------------
 
-function validateCenters(stickers) {
-  const centers = {};
-  for (const f of FACE_ORDER) centers[f] = stickers[f][4];
-  const vals = Object.values(centers);
-  if (new Set(vals).size !== 6) return { valid: false, error: 'Centers must be 6 distinct colors' };
-  for (const [f1, f2] of [[Face.U, Face.D], [Face.R, Face.L], [Face.F, Face.B]]) {
-    if (OPPOSITE[centers[f1]] !== centers[f2]) return { valid: false, error: `Invalid opposites: ${centers[f1]} (${f1}) vs ${centers[f2]} (${f2})` };
-  }
-  const colorToFace = {};
-  for (const [f, c] of Object.entries(centers)) colorToFace[c] = f;
-  return { valid: true, centers, colorToFace };
+function validateCenters(st) {
+  const c={}; for(const f of FACE_ORDER) c[f]=st[f][4];
+  if(new Set(Object.values(c)).size!==6) return {valid:false,error:'Centers must be 6 distinct colors'};
+  for(const [f1,f2] of [[Face.U,Face.D],[Face.R,Face.L],[Face.F,Face.B]]) if(OPPOSITE[c[f1]]!==c[f2]) return {valid:false,error:`Invalid opposites: ${c[f1]} vs ${c[f2]}`};
+  const ct={}; for(const [f,col] of Object.entries(c)) ct[col]=f;
+  return {valid:true, centers:c, colorToFace:ct};
 }
 
-function stickersToCubie(stickers, colorToFace) {
-  const state = { cornerPos: new Array(8), cornerOri: new Array(8), edgePos: new Array(12), edgeOri: new Array(12) };
-  const cornerMap = new Map(), edgeMap = new Map();
-  for (let i = 0; i < 8; i++) {
-    const faces = CORNER_FACES[i];
-    const sig = faces.map(f => STANDARD_COLOR_TO_FACE[Object.keys(STANDARD_COLOR_TO_FACE).find(k => STANDARD_COLOR_TO_FACE[k] === f)]).sort().join(',');
-    cornerMap.set(sig, i);
+function stickersToCubie(st, ct) {
+  const s={cornerPos:new Array(8),cornerOri:new Array(8),edgePos:new Array(12),edgeOri:new Array(12)};
+  const cm=new Map(), em=new Map();
+  for(let i=0;i<8;i++){ const sig=CORNER_FACES[i].map(f=>STANDARD_COLOR_TO_FACE[Object.keys(STANDARD_COLOR_TO_FACE).find(k=>STANDARD_COLOR_TO_FACE[k]===f)]).sort().join(','); cm.set(sig,i); }
+  for(let i=0;i<12;i++){ const sig=EDGE_FACES[i].map(f=>STANDARD_COLOR_TO_FACE[Object.keys(STANDARD_COLOR_TO_FACE).find(k=>STANDARD_COLOR_TO_FACE[k]===f)]).sort().join(','); em.set(sig,i); }
+  for(let i=0;i<8;i++){
+    const sc=CORNER_STICKER_MAP[i].map(({face,sticker})=>st[face][sticker]);
+    const sf=sc.map(c=>ct[c]);
+    const sig=[...sf].sort((a,b)=>FACE_INDEX[a]-FACE_INDEX[b]).join(',');
+    const idx=cm.get(sig); if(idx===undefined) throw new Error(`Bad corner ${i}`);
+    s.cornerPos[i]=idx;
+    const u1=CORNER_FACES[idx].findIndex(f=>f===Face.U||f===Face.D);
+    const u2=CORNER_FACES[i].findIndex(f=>f===Face.U||f===Face.D);
+    s.cornerOri[i]=(u1-u2+3)%3;
   }
-  for (let i = 0; i < 12; i++) {
-    const faces = EDGE_FACES[i];
-    const sig = faces.map(f => STANDARD_COLOR_TO_FACE[Object.keys(STANDARD_COLOR_TO_FACE).find(k => STANDARD_COLOR_TO_FACE[k] === f)]).sort().join(',');
-    edgeMap.set(sig, i);
+  for(let i=0;i<12;i++){
+    const sc=EDGE_STICKER_MAP[i].map(({face,sticker})=>st[face][sticker]);
+    const sf=sc.map(c=>ct[c]);
+    const sig=[...sf].sort((a,b)=>FACE_INDEX[a]-FACE_INDEX[b]).join(',');
+    const idx=em.get(sig); if(idx===undefined) throw new Error(`Bad edge ${i}`);
+    s.edgePos[i]=idx;
+    s.edgeOri[i]=(sf[0]===EDGE_FACES[idx][0])?0:1;
   }
-  for (let i = 0; i < 8; i++) {
-    const stickerColors = CORNER_STICKER_MAP[i].map(({ face, sticker }) => stickers[face][sticker]);
-    const standardFaces = stickerColors.map(c => colorToFace[c]);
-    const sig = [...standardFaces].sort((a, b) => FACE_INDEX[a] - FACE_INDEX[b]).join(',');
-    const idx = cornerMap.get(sig);
-    if (idx === undefined) throw new Error(`Invalid corner at ${i}: ${stickerColors.join(',')}`);
-    state.cornerPos[i] = idx;
-    const uOrDFaceInCubie = CORNER_FACES[idx].findIndex(f => f === Face.U || f === Face.D);
-    const uOrDFaceInSlot = CORNER_FACES[i].findIndex(f => f === Face.U || f === Face.D);
-    state.cornerOri[i] = (uOrDFaceInCubie - uOrDFaceInSlot + 3) % 3;
-  }
-  for (let i = 0; i < 12; i++) {
-    const stickerColors = EDGE_STICKER_MAP[i].map(({ face, sticker }) => stickers[face][sticker]);
-    const standardFaces = stickerColors.map(c => colorToFace[c]);
-    const sig = [...standardFaces].sort((a, b) => FACE_INDEX[a] - FACE_INDEX[b]).join(',');
-    const idx = edgeMap.get(sig);
-    if (idx === undefined) throw new Error(`Invalid edge at ${i}: ${stickerColors.join(',')}`);
-    state.edgePos[i] = idx;
-    const edgePrimaryFace = EDGE_FACES[idx][0];
-    const stickerOnPrimary = standardFaces[0];
-    state.edgeOri[i] = (stickerOnPrimary === edgePrimaryFace) ? 0 : 1;
-  }
-  return state;
+  return s;
 }
 
-function validateCubeState(state) {
-  const cp = state.cornerPos, ep = state.edgePos;
-  if (new Set(cp).size !== 8 || new Set(ep).size !== 12) return { valid: false, error: 'Duplicate or missing pieces' };
-  if (state.cornerOri.reduce((a, b) => a + b, 0) % 3 !== 0) return { valid: false, error: 'Invalid corner orientation sum' };
-  if (state.edgeOri.reduce((a, b) => a + b, 0) % 2 !== 0) return { valid: false, error: 'Invalid edge orientation sum' };
-  if (permutationParity(cp) !== permutationParity(ep)) return { valid: false, error: 'Invalid permutation parity' };
-  return { valid: true };
-}
-
-function permutationParity(perm) {
-  const visited = new Array(perm.length).fill(false);
-  let cycles = 0;
-  for (let i = 0; i < perm.length; i++) if (!visited[i]) { cycles++; let j = i; while (!visited[j]) { visited[j] = true; j = perm[j]; } }
-  return (perm.length - cycles) % 2;
+function validateCubeState(s) {
+  if(new Set(s.cornerPos).size!==8 || new Set(s.edgePos).size!==12) return {valid:false,error:'Duplicate/missing pieces'};
+  if(s.cornerOri.reduce((a,b)=>a+b,0)%3!==0) return {valid:false,error:'Bad corner ori'};
+  if(s.edgeOri.reduce((a,b)=>a+b,0)%2!==0) return {valid:false,error:'Bad edge ori'};
+  function parity(p){ const v=new Array(p.length).fill(false); let c=0; for(let i=0;i<p.length;i++) if(!v[i]){c++;let j=i;while(!v[j]){v[j]=true;j=p[j];}} return (p.length-c)%2; }
+  if(parity(s.cornerPos)!==parity(s.edgePos)) return {valid:false,error:'Bad parity'};
+  return {valid:true};
 }
 
 // -----------------------------------------------------------------------------
 // PHASE 1 SOLVER
 // -----------------------------------------------------------------------------
 
-const CORNER_ORI_MAX = 2187, EDGE_ORI_MAX = 2048, UD_SLICE_MAX = 495;
+const CO_MAX=2187, EO_MAX=2048, UD_MAX=495;
+function coCoord(s){ let c=0; for(let i=0;i<7;i++) c=c*3+s.cornerOri[i]; return c; }
+function eoCoord(s){ let c=0; for(let i=0;i<11;i++) c=c*2+s.edgeOri[i]; return c; }
+function udCoord(s){ const sl=[8,9,10,11]; const p=[...s.edgePos]; let c=0,n=12; for(const e of sl){ const pos=p.indexOf(e); c=c*n+pos; p.splice(pos,1); n--; } return c; }
 
-function getCornerOriCoord(state) { let c = 0; for (let i = 0; i < 7; i++) c = c * 3 + state.cornerOri[i]; return c; }
-function getEdgeOriCoord(state) { let c = 0; for (let i = 0; i < 11; i++) c = c * 2 + state.edgeOri[i]; return c; }
-function getUDSliceCoord(state) {
-  const slice = [8, 9, 10, 11];
-  const perm = [...state.edgePos];
-  let c = 0, n = 12;
-  for (const e of slice) { const pos = perm.indexOf(e); c = c * n + pos; perm.splice(pos, 1); n--; }
-  return c;
-}
-
-let phase1Pruning = null;
-
-function generatePhase1Pruning() {
-  const size = CORNER_ORI_MAX * EDGE_ORI_MAX * UD_SLICE_MAX;
-  const table = new Uint8Array(size); table.fill(255);
-  const queue = [[0, 0, 0]]; table[0] = 0;
-  const coTrans = [], eoTrans = [], udTrans = [];
-  for (const m of BASIC_MOVES) {
-    const mt = MOVE_TABLES[m];
-    const co = new Array(CORNER_ORI_MAX);
-    for (let i = 0; i < CORNER_ORI_MAX; i++) {
-      let v = i, ori = new Array(7);
-      for (let j = 6; j >= 0; j--) { ori[j] = v % 3; v = Math.floor(v / 3); }
-      const s = { cornerPos: [0,1,2,3,4,5,6,7], cornerOri: [...ori, 0], edgePos: [0,1,2,3,4,5,6,7,8,9,10,11], edgeOri: new Array(12).fill(0) };
-      let sum = 0; for (let j = 0; j < 7; j++) sum += s.cornerOri[j]; s.cornerOri[7] = (3 - sum % 3) % 3;
-      co[i] = getCornerOriCoord(applyMove(s, mt));
-    }
-    coTrans.push(co);
-    const eo = new Array(EDGE_ORI_MAX);
-    for (let i = 0; i < EDGE_ORI_MAX; i++) {
-      let v = i, ori = new Array(11);
-      for (let j = 10; j >= 0; j--) { ori[j] = v % 2; v = Math.floor(v / 2); }
-      const s = { cornerPos: [0,1,2,3,4,5,6,7], cornerOri: new Array(8).fill(0), edgePos: [0,1,2,3,4,5,6,7,8,9,10,11], edgeOri: [...ori, 0] };
-      let sum = 0; for (let j = 0; j < 11; j++) sum += s.edgeOri[j]; s.edgeOri[11] = sum % 2;
-      eo[i] = getEdgeOriCoord(applyMove(s, mt));
-    }
-    eoTrans.push(eo);
-    const ud = new Array(UD_SLICE_MAX);
-    for (let i = 0; i < UD_SLICE_MAX; i++) {
-      const slice = [8, 9, 10, 11];
-      const perm = new Array(12).fill(-1);
-      let v = i;
-      for (let j = 3; j >= 0; j--) {
-        const pos = v % (12 - (3 - j));
-        v = Math.floor(v / (12 - (3 - j)));
-        let idx = 0;
-        for (let k = 0; k < 12; k++) if (perm[k] === -1) { if (idx === pos) { perm[k] = slice[j]; break; } idx++; }
-      }
-      const other = [0,1,2,3,4,5,6,7]; let oi = 0;
-      for (let k = 0; k < 12; k++) if (perm[k] === -1) perm[k] = other[oi++];
-      const s = { cornerPos: [0,1,2,3,4,5,6,7], cornerOri: new Array(8).fill(0), edgePos: perm, edgeOri: new Array(12).fill(0) };
-      ud[i] = getUDSliceCoord(applyMove(s, mt));
-    }
-    udTrans.push(ud);
+let P1=null;
+function genP1(){
+  const T=new Uint8Array(CO_MAX*EO_MAX*UD_MAX); T.fill(255);
+  const q=[[0,0,0]]; T[0]=0;
+  const coT=[], eoT=[], udT=[];
+  for(const m of BASIC_MOVES){
+    const mt=MOVE_TABLES[m];
+    const co=new Array(CO_MAX); for(let i=0;i<CO_MAX;i++){let v=i,o=new Array(7);for(let j=6;j>=0;j--){o[j]=v%3;v=Math.floor(v/3);} const st={cp:[0,1,2,3,4,5,6,7],co:[...o,0],ep:[0,1,2,3,4,5,6,7,8,9,10,11],eo:new Array(12).fill(0)}; let sm=0;for(let j=0;j<7;j++)sm+=st.co[j];st.co[7]=(3-sm%3)%3; co[i]=coCoord(applyMove(st,mt));} coT.push(co);
+    const eo=new Array(EO_MAX); for(let i=0;i<EO_MAX;i++){let v=i,o=new Array(11);for(let j=10;j>=0;j--){o[j]=v%2;v=Math.floor(v/2);} const st={cp:[0,1,2,3,4,5,6,7],co:new Array(8).fill(0),ep:[0,1,2,3,4,5,6,7,8,9,10,11],eo:[...o,0]}; let sm=0;for(let j=0;j<11;j++)sm+=st.eo[j];st.eo[11]=sm%2; eo[i]=eoCoord(applyMove(st,mt));} eoT.push(eo);
+    const ud=new Array(UD_MAX); for(let i=0;i<UD_MAX;i++){const sl=[8,9,10,11]; const p=new Array(12).fill(-1); let v=i; for(let j=3;j>=0;j--){const pos=v%(12-(3-j));v=Math.floor(v/(12-(3-j)));let idx=0;for(let k=0;k<12;k++)if(p[k]===-1){if(idx===pos){p[k]=sl[j];break;}idx++;}} const oth=[0,1,2,3,4,5,6,7]; let oi=0; for(let k=0;k<12;k++) if(p[k]===-1)p[k]=oth[oi++]; const st={cp:[0,1,2,3,4,5,6,7],co:new Array(8).fill(0),ep:p,eo:new Array(12).fill(0)}; ud[i]=udCoord(applyMove(st,mt));} udT.push(ud);
   }
-  let head = 0;
-  while (head < queue.length) {
-    const [co, eo, ud] = queue[head++];
-    const dist = table[co * EDGE_ORI_MAX * UD_SLICE_MAX + eo * UD_SLICE_MAX + ud];
-    if (dist >= 12) continue;
-    for (let mi = 0; mi < BASIC_MOVES.length; mi++) {
-      const nco = coTrans[mi][co], neo = eoTrans[mi][eo], nud = udTrans[mi][ud];
-      const idx = nco * EDGE_ORI_MAX * UD_SLICE_MAX + neo * UD_SLICE_MAX + nud;
-      if (table[idx] === 255) { table[idx] = dist + 1; queue.push([nco, neo, nud]); }
-    }
-  }
-  return { table, coTrans, eoTrans, udTrans };
+  let h=0; while(h<q.length){ const [c,e,u]=q[h++]; const d=T[c*EO_MAX*UD_MAX+e*UD_MAX+u]; if(d>=12)continue; for(let mi=0;mi<BASIC_MOVES.length;mi++){ const nc=coT[mi][c], ne=eoT[mi][e], nu=udT[mi][u]; const id=nc*EO_MAX*UD_MAX+ne*UD_MAX+nu; if(T[id]===255){T[id]=d+1;q.push([nc,ne,nu]);}}} return {T,coT,eoT,udT};
 }
-
-function getPhase1Pruning() {
-  if (!phase1Pruning) { console.log('Generating Phase 1 pruning table...'); phase1Pruning = generatePhase1Pruning(); console.log('Phase 1 pruning table ready'); }
-  return phase1Pruning;
+function getP1(){ if(!P1){console.log('Building pruning table...');P1=genP1();console.log('Pruning table ready');} return P1; }
+function p1Search(s,maxD){
+  const {T,coT,eoT,udT}=getP1(); const c=coCoord(s),e=eoCoord(s),u=udCoord(s); const id=c*EO_MAX*UD_MAX+e*UD_MAX+u; if(T[id]===255||T[id]>maxD)return null;
+  const path=[]; let found=null;
+  function dfs(cs,cc,ee,uu,dep,lm){ const cid=cc*EO_MAX*UD_MAX+ee*UD_MAX+uu; const h=T[cid]; if(h===255||dep+h>maxD)return false; if(h===0&&cc===0&&ee===0&&uu===0){found=[...path];return true;} for(let mi=0;mi<BASIC_MOVES.length;mi++){ if(lm>=0&&Math.floor(lm/3)===Math.floor(mi/3))continue; const m=BASIC_MOVES[mi]; const ns=applyMove(cs,MOVE_TABLES[m]); const nc=coT[mi][cc], ne=eoT[mi][ee], nu=udT[mi][uu]; path.push(m); if(dfs(ns,nc,ne,nu,dep+1,mi))return true; path.pop(); } return false; }
+  dfs(s,c,e,u,0,-1); return found;
 }
-
-function phase1Search(state, maxDepth) {
-  const { table, coTrans, eoTrans, udTrans } = getPhase1Pruning();
-  const co = getCornerOriCoord(state), eo = getEdgeOriCoord(state), ud = getUDSliceCoord(state);
-  const idx = co * EDGE_ORI_MAX * UD_SLICE_MAX + eo * UD_SLICE_MAX + ud;
-  if (table[idx] === 255 || table[idx] > maxDepth) return null;
-  const path = []; let found = null;
-  function dfs(cState, cCo, cEo, cUd, depth, lastMove) {
-    const cidx = cCo * EDGE_ORI_MAX * UD_SLICE_MAX + cEo * UD_SLICE_MAX + cUd;
-    const h = table[cidx];
-    if (h === 255 || depth + h > maxDepth) return false;
-    if (h === 0 && cCo === 0 && cEo === 0 && cUd === 0) { found = [...path]; return true; }
-    for (let mi = 0; mi < BASIC_MOVES.length; mi++) {
-      if (lastMove >= 0 && Math.floor(lastMove / 3) === Math.floor(mi / 3)) continue;
-      const m = BASIC_MOVES[mi];
-      const nState = applyMove(cState, MOVE_TABLES[m]);
-      const nCo = coTrans[mi][cCo], nEo = eoTrans[mi][cEo], nUd = udTrans[mi][cUd];
-      path.push(m);
-      if (dfs(nState, nCo, nEo, nUd, depth + 1, mi)) return true;
-      path.pop();
-    }
-    return false;
-  }
-  dfs(state, co, eo, ud, 0, -1);
-  return found;
-}
-
-function solveCube(state) {
-  for (let depth = 0; depth <= 12; depth++) {
-    const moves = phase1Search(state, depth);
-    if (moves) return moves;
-  }
-  return null;
-}
+function solveCube(s){ for(let d=0;d<=12;d++){const m=p1Search(s,d); if(m)return m;} return null; }
 
 // -----------------------------------------------------------------------------
 // CUBE TO STICKERS
 // -----------------------------------------------------------------------------
 
-function cubieToStickers(state, colorToFace) {
-  const faceToColor = {};
-  for (const [c, f] of Object.entries(colorToFace)) faceToColor[f] = c;
-  const stickers = {};
-  for (const f of FACE_ORDER) stickers[f] = new Array(9).fill(faceToColor[f]);
-  for (const f of FACE_ORDER) stickers[f][4] = faceToColor[f];
-  for (let i = 0; i < 8; i++) {
-    const idx = state.cornerPos[i], ori = state.cornerOri[i];
-    const faces = CORNER_FACES[idx];
-    const rotated = [faces[(0 - ori + 3) % 3], faces[(1 - ori + 3) % 3], faces[(2 - ori + 3) % 3]];
-    for (let j = 0; j < 3; j++) {
-      const { face, sticker } = CORNER_STICKER_MAP[i][j];
-      stickers[face][sticker] = faceToColor[rotated[j]];
-    }
-  }
-  for (let i = 0; i < 12; i++) {
-    const idx = state.edgePos[i], ori = state.edgeOri[i];
-    const faces = EDGE_FACES[idx];
-    const rotated = ori === 0 ? faces : [faces[1], faces[0]];
-    for (let j = 0; j < 2; j++) {
-      const { face, sticker } = EDGE_STICKER_MAP[i][j];
-      stickers[face][sticker] = faceToColor[rotated[j]];
-    }
-  }
-  return stickers;
+function cubieToStickers(s,ct){
+  const ft={}; for(const [c,f] of Object.entries(ct)) ft[f]=c;
+  const st={}; for(const f of FACE_ORDER) st[f]=new Array(9).fill(ft[f]); for(const f of FACE_ORDER) st[f][4]=ft[f];
+  for(let i=0;i<8;i++){const id=s.cornerPos[i],o=s.cornerOri[i]; const fs=CORNER_FACES[id]; const rs=[fs[(0-o+3)%3],fs[(1-o+3)%3],fs[(2-o+3)%3]]; for(let j=0;j<3;j++){const {face,sticker}=CORNER_STICKER_MAP[i][j]; st[face][sticker]=ft[rs[j]];}}
+  for(let i=0;i<12;i++){const id=s.edgePos[i],o=s.edgeOri[i]; const fs=EDGE_FACES[id]; const rs=o===0?fs:[fs[1],fs[0]]; for(let j=0;j<2;j++){const {face,sticker}=EDGE_STICKER_MAP[i][j]; st[face][sticker]=ft[rs[j]];}}
+  return st;
 }
 
 // -----------------------------------------------------------------------------
-// TOAST
+// UI HELPERS
 // -----------------------------------------------------------------------------
 
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  const icons = {
-    success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
-    error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-    info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
-  };
-  toast.innerHTML = `${icons[type]}<span>${message}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => { toast.style.animation = 'toastIn 0.3s reverse'; setTimeout(() => toast.remove(), 300); }, 4000);
-}
+function showToast(msg,type='info'){const c=document.getElementById('toast-container');const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;c.appendChild(t);setTimeout(()=>t.remove(),3000);}
+function $(id){return document.getElementById(id);}
 
 // -----------------------------------------------------------------------------
-// 3D CUBE CLASS (with Three.js or Canvas 2D fallback)
+// CANVAS 3D CUBE (No dependencies!)
 // -----------------------------------------------------------------------------
 
-class RubiksCube3D {
-  constructor(container) {
-    this.container = container;
-    this.stickerMeshes = {};
-    this.selectedColor = 'W';
-    this.useThreeJS = false;
-    this.three = null;
-    this.scene = null;
-    this.camera = null;
-    this.renderer = null;
-    this.controls = null;
-    this.animationId = null;
-
-    this.init();
+class CubeRenderer {
+  constructor(el){
+    this.el=el; this.canvas=document.createElement('canvas'); this.ctx=this.canvas.getContext('2d');
+    this.el.appendChild(this.canvas);
+    this.stickerColors={}; // face:index -> color
+    this.hovered=null; this.dragging=false; this.last={x:0,y:0};
+    this.angle={x:0.5,y:0.5}; this.dist=5;
+    this.init(); this.draw();
   }
-
-  async init() {
-    try {
-      // Try to load Three.js
-      const { THREE, OrbitControls } = await THREE.load();
-      if (THREE) {
-        this.useThreeJS = true;
-        this.three = THREE;
-        await this.initThreeJS(OrbitControls);
-      } else {
-        this.useThreeJS = false;
-        this.initCanvas2D();
-      }
-    } catch (e) {
-      console.warn('Three.js init failed, falling back to Canvas 2D:', e);
-      this.useThreeJS = false;
-      this.initCanvas2D();
+  init(){
+    const r=this.resize(); this.canvas.width=r.w*devicePixelRatio; this.canvas.height=r.h*devicePixelRatio; this.canvas.style.width=r.w+'px'; this.canvas.style.height=r.h+'px';
+    window.addEventListener('resize',()=>this.resize());
+    this.buildGeometry();
+    this.canvas.addEventListener('mousemove',e=>this.onMove(e));
+    this.canvas.addEventListener('click',e=>this.onClick(e));
+    this.canvas.addEventListener('pointerdown',e=>this.onDown(e));
+    this.canvas.addEventListener('pointerup',e=>this.onUp(e));
+    this.canvas.addEventListener('pointermove',e=>this.onPointerMove(e));
+    this.canvas.addEventListener('wheel',e=>this.onWheel(e),{passive:false});
+    this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+  }
+  resize(){
+    const rect=this.el.getBoundingClientRect(); const w=rect.width||400, h=rect.height||400;
+    if(this.canvas.width!==w*devicePixelRatio||this.canvas.height!==h*devicePixelRatio){
+      this.canvas.width=w*devicePixelRatio; this.canvas.height=h*devicePixelRatio; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.draw();
     }
+    return {w,h};
   }
-
-  async initThreeJS(OrbitControls) {
-    const THREE = this.three;
-    const rect = this.container.getBoundingClientRect();
-
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    this.renderer.setSize(rect.width, rect.height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.container.appendChild(this.renderer.domElement);
-
-    this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 0.1, 100);
-    this.camera.position.set(3, 3, 5);
-
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    this.controls.enablePan = false;
-    this.controls.minDistance = 3;
-    this.controls.maxDistance = 10;
-
-    // Lights
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-    this.scene.add(ambient);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(5, 10, 7);
-    dirLight.castShadow = true;
-    this.scene.add(dirLight);
-    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
-    dirLight2.position.set(-5, -5, -5);
-    this.scene.add(dirLight2);
-
-    this.createCubeThreeJS();
-    this.setupEventsThreeJS();
-    this.animateThreeJS();
-
-    window.addEventListener('resize', () => this.onResize());
-  }
-
-  onResize() {
-    const rect = this.container.getBoundingClientRect();
-    if (this.useThreeJS && this.camera && this.renderer) {
-      this.camera.aspect = rect.width / rect.height;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(rect.width, rect.height);
-    } else if (!this.useThreeJS && this.canvas) {
-      this.canvas.width = rect.width * window.devicePixelRatio;
-      this.canvas.height = rect.height * window.devicePixelRatio;
-      this.canvas.style.width = rect.width + 'px';
-      this.canvas.style.height = rect.height + 'px';
-      this.drawCanvas2D();
-    }
-  }
-
-  createCubeThreeJS() {
-    const THREE = this.three;
-    this.cubeGroup = new THREE.Group();
-    this.scene.add(this.cubeGroup);
-
-    // Core
-    const coreGeo = new THREE.BoxGeometry(1.9, 1.9, 1.9);
-    const coreMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8, metalness: 0.2 });
-    this.cubeGroup.add(new THREE.Mesh(coreGeo, coreMat));
-
-    const stickerSize = 0.58;
-    const gap = 0.03;
-    const faceOffset = 1.01;
-
-    for (const f of FACE_ORDER) {
-      const config = FACE_CONFIG[f];
-      const faceGroup = new THREE.Group();
-      faceGroup.userData = { face: f };
-      this.stickerMeshes[f] = [];
-
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3; col++) {
-          const geo = new THREE.BoxGeometry(stickerSize, stickerSize, 0.08);
-          const mat = new THREE.MeshStandardMaterial({
-            color: 0x333333,
-            roughness: 0.3,
-            metalness: 0.1,
-            polygonOffset: true,
-            polygonOffsetFactor: -1,
-            polygonOffsetUnits: -1,
-          });
-          const mesh = new THREE.Mesh(geo, mat);
-          mesh.userData = { face, row, col, index: row * 3 + col, isCenter: row === 1 && col === 1 };
-
-          const start = -stickerSize - gap;
-          mesh.position.set(col * (stickerSize + gap) + start, -row * (stickerSize + gap) - start, 0.04);
-
-          faceGroup.add(mesh);
-          this.stickerMeshes[f].push(mesh);
-        }
-      }
-
-      faceGroup.position.set(...config.pos);
-      faceGroup.rotation.set(...config.rot);
-      this.cubeGroup.add(faceGroup);
-    }
-
-    // Initial solved colors
-    this.updateColors({ U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' });
-  }
-
-  setupEventsThreeJS() {
-    this.raycaster = new this.three.Raycaster();
-    this.mouse = new this.three.Vector2();
-
-    this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
-    this.renderer.domElement.addEventListener('click', (e) => this.onClick(e));
-    this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
-    this.renderer.domElement.addEventListener('pointerup', (e) => this.onPointerUp(e));
-    this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
-  }
-
-  getMousePosition(e) {
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  }
-
-  onMouseMove(e) {
-    if (!this.useThreeJS) return;
-    this.getMousePosition(e);
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.cubeGroup.children, true);
-
-    for (const f of FACE_ORDER) {
-      for (const mesh of this.stickerMeshes[f]) {
-        if (mesh.material.emissive) mesh.material.emissive.setHex(0x000000);
-      }
-    }
-
-    if (intersects.length > 0) {
-      const hit = intersects[0].object;
-      if (hit.userData.face && hit.material.emissive) {
-        hit.material.emissive.setHex(0x444444);
-        hit.material.needsUpdate = true;
-        this.renderer.domElement.style.cursor = 'pointer';
-      }
-    } else {
-      this.renderer.domElement.style.cursor = 'grab';
-    }
-  }
-
-  onClick(e) {
-    if (this.isDragging) return;
-    if (this.useThreeJS) {
-      this.getMousePosition(e);
-      this.raycaster.setFromCamera(this.mouse, this.camera);
-      const intersects = this.raycaster.intersectObjects(this.cubeGroup.children, true);
-      if (intersects.length > 0) {
-        const hit = intersects[0].object;
-        if (hit.userData.face && hit.userData.index !== undefined) {
-          this.setStickerColor(hit.userData.face, hit.userData.index, this.selectedColor);
-          if (window.app) window.app.onStickerChange(hit.userData.face, hit.userData.index, this.selectedColor);
-        }
-      }
-    } else {
-      // Canvas 2D click handling
-      this.handleCanvasClick(e);
-    }
-  }
-
-  onPointerDown(e) {
-    this.isDragging = true;
-    this.dragStart = { x: e.clientX, y: e.clientY };
-    if (this.useThreeJS && this.controls) this.controls.enabled = false;
-    this.renderer?.domElement?.style.cursor = this.canvas?.style.cursor = 'grabbing';
-  }
-
-  onPointerUp(e) {
-    const dx = e.clientX - (this.dragStart?.x || 0);
-    const dy = e.clientY - (this.dragStart?.y || 0);
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    this.isDragging = false;
-    if (this.useThreeJS && this.controls) this.controls.enabled = true;
-    this.renderer?.domElement?.style.cursor = this.canvas?.style.cursor = 'grab';
-    if (dist < 5 && !this.useThreeJS) this.handleCanvasClick(e);
-  }
-
-  animateThreeJS() {
-    this.animationId = requestAnimationFrame(() => this.animateThreeJS());
-    if (this.controls) this.controls.update();
-    if (this.renderer && this.scene && this.camera) this.renderer.render(this.scene, this.camera);
-  }
-
-  // Canvas 2D Fallback
-  initCanvas2D() {
-    const rect = this.container.getBoundingClientRect();
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = rect.width * window.devicePixelRatio;
-    this.canvas.height = rect.height * window.devicePixelRatio;
-    this.canvas.style.width = rect.width + 'px';
-    this.canvas.style.height = rect.height + 'px';
-    this.canvas.style.borderRadius = 'var(--radius-lg)';
-    this.container.appendChild(this.canvas);
-    this.ctx = this.canvas.getContext('2d');
-
-    this.cameraAngle = { x: 0.5, y: 0.5 };
-    this.cameraDistance = 5;
-    this.target = { x: 0, y: 0, z: 0 };
-    this.dragging = false;
-    this.lastMouse = { x: 0, y: 0 };
-
-    this.createCubeGeometry();
-    this.setupCanvasEvents();
-    this.drawCanvas2D();
-  }
-
-  createCubeGeometry() {
-    // Pre-compute 3D positions of all stickers
-    this.stickerGeometry = {};
-    const stickerSize = 0.58;
-    const gap = 0.03;
-    const faceOffset = 1.01;
-
-    for (const f of FACE_ORDER) {
-      const config = FACE_CONFIG[f];
-      this.stickerGeometry[f] = [];
-
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3; col++) {
-          const index = row * 3 + col;
-          const start = -stickerSize - gap;
-          const localX = col * (stickerSize + gap) + start;
-          const localY = -row * (stickerSize + gap) - start;
-          const localZ = faceOffset / 2;
-
-          // Rotate local position by face rotation
-          let x = localX, y = localY, z = localZ;
-          const [rx, ry, rz] = config.rot;
-
-          // Apply rotations (Z, Y, X order)
-          if (rz !== 0) {
-            const cos = Math.cos(rz), sin = Math.sin(rz);
-            [x, y] = [x * cos - y * sin, x * sin + y * cos];
-          }
-          if (ry !== 0) {
-            const cos = Math.cos(ry), sin = Math.sin(ry);
-            [x, z] = [x * cos + z * sin, -x * sin + z * cos];
-          }
-          if (rx !== 0) {
-            const cos = Math.cos(rx), sin = Math.sin(rx);
-            [y, z] = [y * cos - z * sin, y * sin + z * cos];
-          }
-
-          // Add face position
-          x += config.pos[0];
-          y += config.pos[1];
-          z += config.pos[2];
-
-          this.stickerGeometry[f].push({
-            index,
-            row, col,
-            localPos: { x: localX, y: localY, z: localZ },
-            worldPos: { x, y, z },
-            normal: config.normal,
-            face: f,
-            isCenter: row === 1 && col === 1,
-            size: stickerSize,
-          });
-        }
+  buildGeometry(){
+    this.geom={}; const sz=0.58, gap=0.03, off=1.01;
+    for(const f of FACE_ORDER){
+      const cfg=FACE_CONFIG[f]; this.geom[f]=[];
+      for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+        const i=r*3+c, st=-sz-gap, lx=c*(sz+gap)+st, ly=-r*(sz+gap)-st, lz=off/2;
+        let x=lx, y=ly, z=lz; const [rx,ry,rz]=cfg.rot;
+        if(rz){const cs=Math.cos(rz),sn=Math.sin(rz); [x,y]=[x*cs-y*sn,x*sn+y*cs];}
+        if(ry){const cs=Math.cos(ry),sn=Math.sin(ry); [x,z]=[x*cs+z*sn,-x*sn+z*cs];}
+        if(rx){const cs=Math.cos(rx),sn=Math.sin(rx); [y,z]=[y*cs-z*sn,y*sn+z*cs];}
+        x+=cfg.pos[0]; y+=cfg.pos[1]; z+=cfg.pos[2];
+        this.geom[f].push({i,r,c,face:f,world:{x,y,z},normal:cfg.normal,sz,center:r===1&&c===1});
       }
     }
   }
+  getColor(f,i){ return this.stickerColors[f+':'+i] || this.defaultColor(f); }
+  defaultColor(f){ return {U:'W',R:'R',F:'G',D:'Y',L:'O',B:'B'}[f]; }
+  setColor(f,i,c){ this.stickerColors[f+':'+i]=c; this.draw(); }
+  setAll(colors){ for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.setColor(f,i,colors[f]); }
+  setState(s,ct){ const st=cubieToStickers(s,ct); for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.setColor(f,i,st[f][i]); }
 
-  setupCanvasEvents() {
-    this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
-    this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
-    this.canvas.addEventListener('pointerdown', (e) => this.onCanvasPointerDown(e));
-    this.canvas.addEventListener('pointerup', (e) => this.onCanvasPointerUp(e));
-    this.canvas.addEventListener('pointermove', (e) => this.onCanvasPointerMove(e));
-    this.canvas.addEventListener('wheel', (e) => this.onCanvasWheel(e), { passive: false });
-    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-  }
+  onMove(e){ const r=this.el.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top; this.hovered=this.hitTest(x,y); this.canvas.style.cursor=this.hovered?'pointer':'grab'; this.draw(); }
+  onClick(e){ if(this.dragging)return; const r=this.el.getBoundingClientRect(); const hit=this.hitTest(e.clientX-r.left,e.clientY-r.top); if(hit&&window.app) window.app.onStickerChange(hit.face,hit.i,this.pickerColor); }
+  onDown(e){ this.dragging=true; this.last={x:e.clientX,y:e.clientY}; this.canvas.style.cursor='grabbing'; }
+  onUp(e){ this.dragging=false; this.canvas.style.cursor='grab'; }
+  onPointerMove(e){ if(!this.dragging)return; const dx=e.clientX-this.last.x, dy=e.clientY-this.last.y; this.last={x:e.clientX,y:e.clientY}; this.angle.y-=dx*0.01; this.angle.x+=dy*0.01; this.angle.x=Math.max(-1.47,Math.min(1.47,this.angle.x)); this.draw(); }
+  onWheel(e){ e.preventDefault(); this.dist+=e.deltaY*0.01; this.dist=Math.max(3,Math.min(10,this.dist)); this.draw(); }
 
-  onCanvasMouseMove(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Raycast to find hovered sticker
-    this.hoveredSticker = this.raycastCanvas(x, y);
-    this.canvas.style.cursor = this.hoveredSticker ? 'pointer' : 'grab';
-    this.drawCanvas2D();
-  }
-
-  handleCanvasClick(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const hit = this.raycastCanvas(x, y);
-    if (hit) {
-      this.setStickerColor(hit.face, hit.index, this.selectedColor);
-      if (window.app) window.app.onStickerChange(hit.face, hit.index, this.selectedColor);
+  hitTest(x,y){
+    const r=this.el.getBoundingClientRect(); const cx=r.width/2, cy=r.height/2; const sc=Math.min(r.width,r.height)/2/this.dist;
+    const camX=this.dist*Math.sin(this.angle.y)*Math.cos(this.angle.x);
+    const camY=this.dist*Math.sin(this.angle.x);
+    const camZ=this.dist*Math.cos(this.angle.y)*Math.cos(this.angle.x);
+    const rx=(x-cx)/sc, ry=(cy-y)/sc;
+    const rdx=rx-camX, rdy=ry-camY, rdz=-camZ;
+    const rl=Math.sqrt(rdx*rdx+rdy*rdy+rdz*rdz); const rdxn=rdx/rl, rdyn=rdy/rl, rdzn=rdz/rl;
+    let best=null, bd=Infinity;
+    for(const f of FACE_ORDER)for(const s of this.geom[f]){
+      const n=s.normal; const denom=rdxn*n[0]+rdyn*n[1]+rdzn*n[2]; if(Math.abs(denom)<0.001) continue;
+      const t=-(rdxn*s.world.x+rdyn*s.world.y+rdzn*s.world.z)/denom; if(t<0) continue;
+      const ix=rdxn*t, iy=rdyn*t, iz=rdzn*t;
+      const lx=ix-s.world.x, ly=iy-s.world.y; const hs=s.sz/2+0.01;
+      if(Math.abs(lx)<=hs && Math.abs(ly)<=hs && t<bd){bd=t; best=s;}
     }
+    return best;
   }
 
-  onCanvasPointerDown(e) {
-    this.dragging = true;
-    this.lastMouse = { x: e.clientX, y: e.clientY };
-    this.canvas.style.cursor = 'grabbing';
-  }
+  draw(){
+    const r=this.resize(); const ctx=this.ctx; const w=this.canvas.width, h=this.canvas.height;
+    ctx.clearRect(0,0,w,h);
+    const cx=w/2, cy=h/2, sc=Math.min(w,h)/2/this.dist;
 
-  onCanvasPointerUp(e) {
-    this.dragging = false;
-    this.canvas.style.cursor = 'grab';
-  }
+    // View vector
+    const vx=-this.dist*Math.sin(this.angle.y)*Math.cos(this.angle.x);
+    const vy=-this.dist*Math.sin(this.angle.x);
+    const vz=-this.dist*Math.cos(this.angle.y)*Math.cos(this.angle.x);
 
-  onCanvasPointerMove(e) {
-    if (!this.dragging) return;
-    const dx = e.clientX - this.lastMouse.x;
-    const dy = e.clientY - this.lastMouse.y;
-    this.lastMouse = { x: e.clientX, y: e.clientY };
-
-    this.cameraAngle.y -= dx * 0.01;
-    this.cameraAngle.x += dy * 0.01;
-    this.cameraAngle.x = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, this.cameraAngle.x));
-    this.drawCanvas2D();
-  }
-
-  onCanvasWheel(e) {
-    e.preventDefault();
-    this.cameraDistance += e.deltaY * 0.01;
-    this.cameraDistance = Math.max(3, Math.min(10, this.cameraDistance));
-    this.drawCanvas2D();
-  }
-
-  raycastCanvas(x, y) {
-    // Project 2D screen coords to 3D ray, find closest intersection
-    const rect = this.canvas.getBoundingClientRect();
-    const cx = rect.width / 2, cy = rect.height / 2;
-    const scale = Math.min(rect.width, rect.height) / 2 / this.cameraDistance;
-
-    // Camera position
-    const camX = this.cameraDistance * Math.sin(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
-    const camY = this.cameraDistance * Math.sin(this.cameraAngle.x);
-    const camZ = this.cameraDistance * Math.cos(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
-
-    // Ray direction
-    const ndcX = (x - cx) / scale;
-    const ndcY = (cy - y) / scale;
-    const rayDir = { x: ndcX - camX, y: ndcY - camY, z: -camZ };
-    const len = Math.sqrt(rayDir.x**2 + rayDir.y**2 + rayDir.z**2);
-    rayDir.x /= len; rayDir.y /= len; rayDir.z /= len;
-
-    let closest = null;
-    let closestDist = Infinity;
-
-    for (const f of FACE_ORDER) {
-      for (const sticker of this.stickerGeometry[f]) {
-        // Plane intersection
-        const normal = sticker.normal;
-        const denom = rayDir.x * normal[0] + rayDir.y * normal[1] + rayDir.z * normal[2];
-        if (Math.abs(denom) < 0.001) continue;
-
-        const pos = sticker.worldPos;
-        const t = -(rayDir.x * pos.x + rayDir.y * pos.y + rayDir.z * pos.z) / denom;
-        if (t < 0) continue;
-
-        const ix = rayDir.x * t;
-        const iy = rayDir.y * t;
-        const iz = rayDir.z * t;
-
-        // Check if within sticker bounds (project to face local coords)
-        const localX = ix - pos.x;
-        const localY = iy - pos.y;
-        const half = sticker.size / 2 + 0.01;
-
-        if (Math.abs(localX) <= half && Math.abs(localY) <= half) {
-          if (t < closestDist) {
-            closestDist = t;
-            closest = sticker;
-          }
-        }
-      }
+    // Collect visible stickers
+    const list=[];
+    for(const f of FACE_ORDER)for(const s of this.geom[f]){
+      const dot=s.normal[0]*vx+s.normal[1]*vy+s.normal[2]*vz; if(dot<=0) continue;
+      const depth=s.world.x*vx+s.world.y*vy+s.world.z*vz;
+      list.push({s,depth,dot});
     }
+    list.sort((a,b)=>b.depth-a.depth);
 
-    return closest;
-  }
-
-  drawCanvas2D() {
-    if (!this.ctx || !this.canvas) return;
-    const ctx = this.ctx;
-    const w = this.canvas.width, h = this.canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
-    // Collect all stickers with depth
-    const stickers = [];
-    for (const f of FACE_ORDER) {
-      for (const s of this.stickerGeometry[f]) {
-        // Camera position
-        const camX = this.cameraDistance * Math.sin(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
-        const camY = this.cameraDistance * Math.sin(this.cameraAngle.x);
-        const camZ = this.cameraDistance * Math.cos(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
-
-        // View direction
-        const viewX = -camX, viewY = -camY, viewZ = -camZ;
-        const viewLen = Math.sqrt(viewX**2 + viewY**2 + viewZ**2);
-
-        // Dot product with normal
-        const dot = s.normal[0] * viewX + s.normal[1] * viewY + s.normal[2] * viewZ;
-        if (dot <= 0) continue; // Back face culling
-
-        // Depth
-        const depth = s.worldPos.x * viewX + s.worldPos.y * viewY + s.worldPos.z * viewZ;
-
-        stickers.push({ sticker: s, depth, dot });
-      }
-    }
-
-    // Sort by depth (painter's algorithm)
-    stickers.sort((a, b) => b.depth - a.depth);
-
-    const cx = w / 2, cy = h / 2;
-    const scale = Math.min(w, h) / 2 / this.cameraDistance;
-
-    for (const { sticker, dot } of stickers) {
-      const pos = sticker.worldPos;
-      const x = pos.x * scale + cx;
-      const y = -pos.y * scale + cy; // Flip Y
-      const size = sticker.size * scale;
-
-      // Color
-      const colorKey = this.getStickerColor(sticker.face, sticker.index);
-      const color = this.hexToRgb(COLOR_HEX[colorKey]);
-
+    for(const {s,dot} of list){
+      const x=s.world.x*sc+cx, y=-s.world.y*sc+cy, sz=s.sz*sc;
+      const col=this.getColor(s.face,s.i); const hex=COLOR_CSS[col];
       // Lighting
-      const light = 0.5 + 0.5 * dot;
-      const r = Math.floor(color.r * light);
-      const g = Math.floor(color.g * light);
-      const b = Math.floor(color.b * light);
-
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      ctx.strokeStyle = '#1a1a2e';
-      ctx.lineWidth = Math.max(1, size * 0.03);
-
-      // Draw rounded square
-      const r2 = Math.max(2, size * 0.08);
-      this.roundRect(ctx, x - size/2, y - size/2, size, size, r2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Highlight hovered
-      if (this.hoveredSticker === sticker) {
-        ctx.strokeStyle = '#8b5cf6';
-        ctx.lineWidth = Math.max(2, size * 0.05);
-        ctx.stroke();
-      }
-
-      // Center indicator
-      if (sticker.isCenter) {
-        ctx.strokeStyle = '#8b5cf6';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x - size/2 - 2, y - size/2 - 2, size + 4, size + 4);
-      }
+      const l=0.5+0.5*dot;
+      const rgb=hexToRgb(hex); const rc=Math.floor(rgb.r*l), gc=Math.floor(rgb.g*l), bc=Math.floor(rgb.b*l);
+      ctx.fillStyle=`rgb(${rc},${gc},${bc})`; ctx.strokeStyle='#1a1a2e'; ctx.lineWidth=Math.max(1,sz*0.03);
+      roundRect(ctx,x-sz/2,y-sz/2,sz,sz,Math.max(2,sz*0.08)); ctx.fill(); ctx.stroke();
+      if(this.hovered===s){ctx.strokeStyle='#8b5cf6';ctx.lineWidth=Math.max(2,sz*0.05);ctx.stroke();}
+      if(s.center){ctx.strokeStyle='#8b5cf6';ctx.lineWidth=2;ctx.strokeRect(x-sz/2-2,y-sz/2-2,sz+4,sz+4);}
     }
-  }
-
-  roundRect(ctx, x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  }
-
-  hexToRgb(hex) {
-    return { r: (hex >> 16) & 255, g: (hex >> 8) & 255, b: hex & 255 };
-  }
-
-  getStickerColor(face, index) {
-    // This will be overridden by the app
-    return 'W';
-  }
-
-  setStickerColor(face, index, color) {
-    // Override getter for this specific sticker
-    if (!this._stickerColors) this._stickerColors = {};
-    this._stickerColors[`${face}:${index}`] = color;
-    if (this.useThreeJS) {
-      const mesh = this.stickerMeshes[face]?.[index];
-      if (mesh) {
-        mesh.material.color.setHex(COLOR_HEX[color]);
-        mesh.material.needsUpdate = true;
-      }
-    } else {
-      this.drawCanvas2D();
-    }
-  }
-
-  getStickerColor(face, index) {
-    return this._stickerColors?.[`${face}:${index}`] || this.getDefaultColor(face);
-  }
-
-  getDefaultColor(face) {
-    const defaults = { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' };
-    return defaults[face];
-  }
-
-  updateColors(faceToColor) {
-    for (const f of FACE_ORDER) {
-      for (let i = 0; i < 9; i++) {
-        this.setStickerColor(f, i, faceToColor[f]);
-      }
-    }
-  }
-
-  setState(state, colorToFace) {
-    const stickers = cubieToStickers(state, colorToFace);
-    for (const f of FACE_ORDER) {
-      for (let i = 0; i < 9; i++) {
-        this.setStickerColor(f, i, stickers[f][i]);
-      }
-    }
-  }
-
-  setSelectedColor(color) {
-    this.selectedColor = color;
-  }
-
-  destroy() {
-    if (this.animationId) cancelAnimationFrame(this.animationId);
-    if (this.controls) this.controls.dispose();
-    if (this.renderer) this.renderer.dispose();
-    if (this.canvas) this.canvas.remove();
   }
 }
+
+function hexToRgb(h){return{r:(h>>16)&255,g:(h>>8)&255,b:h&255};}
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 
 // -----------------------------------------------------------------------------
 // MAIN APP
 // -----------------------------------------------------------------------------
 
-let currentStickers = {};
-let selectedColor = 'W';
-let solutionMoves = [];
-let animState = null;
-let cube3d = null;
-let threeLoaded = false;
+let currentStickers={}, selectedColor='W', solutionMoves=[], animState=null;
+const inputCube=new CubeRenderer($('cube-3d-input'));
+const visualizerCube=new CubeRenderer($('cube-3d-container'));
+inputCube.pickerColor='W';
+window.app={onStickerChange:(f,i,c)=>{currentStickers[f][i]=c; checkReady();}};
 
-async function init3DCubes() {
-  if (threeLoaded) return;
-  threeLoaded = true;
-
-  const inputContainer = document.getElementById('cube-3d-input');
-  if (inputContainer) {
-    cube3d = new RubiksCube3D(inputContainer);
-    window.cube3d = cube3d;
-  }
+function initPalette(){
+  const p=$('color-palette'); p.innerHTML='';
+  for(const c of COLORS){const b=document.createElement('button');b.className='color-btn '+c;b.dataset.color=c;b.onclick=()=>pickColor(c);p.appendChild(b);}
+  pickColor('W');
 }
+function pickColor(c){selectedColor=c; inputCube.pickerColor=c; document.querySelectorAll('.color-btn').forEach(b=>b.classList.toggle('active',b.dataset.color===c));}
 
-function initColorPalette() {
-  const palette = document.getElementById('color-palette');
-  palette.innerHTML = '';
-  for (const c of COLORS) {
-    const btn = document.createElement('button');
-    btn.className = 'color-btn ' + c;
-    btn.dataset.color = c;
-    btn.setAttribute('aria-label', `Select ${c}`);
-    btn.setAttribute('role', 'radio');
-    btn.setAttribute('aria-checked', 'false');
-    btn.addEventListener('click', () => selectColor(c));
-    palette.appendChild(btn);
-  }
-  selectColor('W');
+function resetAll(){
+  currentStickers={}; const def={U:'W',R:'R',F:'G',D:'Y',L:'O',B:'B'};
+  for(const f of FACE_ORDER) currentStickers[f]=new Array(9).fill(def[f]);
+  inputCube.setAll(def); pickColor('W'); hideOut(); hideVis(); showToast('Reset');
 }
-
-function selectColor(c) {
-  selectedColor = c;
-  document.querySelectorAll('.color-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.color === c);
-    b.setAttribute('aria-checked', b.dataset.color === c);
-  });
-  if (cube3d) cube3d.setSelectedColor(c);
+function randomScramble(){
+  let s=cloneState(SOLVED_STATE); let lf=-1;
+  for(let i=0;i<25;i++){let mi;do{mi=Math.floor(Math.random()*BASIC_MOVES.length)}while(Math.floor(mi/3)===lf);lf=Math.floor(mi/3);s=applyMove(s,MOVE_TABLES[BASIC_MOVES[mi]]);}
+  const fc={U:'W',D:'Y',R:'R',L:'O',F:'G',B:'B'}; currentStickers=cubieToStickers(s,fc); inputCube.setState(s,fc); checkReady(); showToast('Scrambled');
 }
-
-function resetCube() {
-  currentStickers = {};
-  const defaults = { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' };
-  for (const f of FACE_ORDER) currentStickers[f] = new Array(9).fill(defaults[f]);
-  if (cube3d) cube3d.updateColors(defaults);
-  selectColor('W');
-  hideOutput();
-  hideVisualizer();
-  showToast('Cube reset to solved state', 'info');
+function checkReady(){
+  const v=validateCenters(currentStickers); const ok=v.valid; $('solve-btn').disabled=!ok;
+  $('solve-hint').textContent=ok?'Ready to solve!':'Complete all 6 faces with valid centers';
+  $('solve-hint').style.color=ok?'var(--success)':'var(--text-dim)';
 }
+function isReady(){return validateCenters(currentStickers).valid;}
 
-function randomScramble() {
-  let state = cloneState(SOLVED_STATE);
-  let lastFace = -1;
-  for (let i = 0; i < 25; i++) {
-    let mi;
-    do { mi = Math.floor(Math.random() * BASIC_MOVES.length); } while (Math.floor(mi / 3) === lastFace);
-    lastFace = Math.floor(mi / 3);
-    state = applyMove(state, MOVE_TABLES[BASIC_MOVES[mi]]);
-  }
-  const faceToColor = { U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' };
-  currentStickers = cubieToStickers(state, faceToColor);
-  if (cube3d) cube3d.setState(state, faceToColor);
-  checkSolveReady();
-  showToast('Random scramble generated', 'success');
+async function solve(){
+  const b=$('solve-btn'), bt=b.querySelector('.btn-text'); const ot=bt.textContent; b.disabled=true; bt.textContent='Solving...'; hideOut(); hideVis();
+  try{
+    const v=validateCenters(currentStickers); if(!v.valid) throw new Error(v.error);
+    const cs=stickersToCubie(currentStickers,v.colorToFace);
+    const sv=validateCubeState(cs); if(!sv.valid) throw new Error(sv.error);
+    const t0=performance.now(); solutionMoves=solveCube(cs); const dt=(performance.now()-t0).toFixed(1);
+    if(!solutionMoves) throw new Error('No solution (depth 12 limit)');
+    const fs=applyMoves(cs,solutionMoves); const solved=equalsCube(fs,SOLVED_STATE);
+    showOut(solutionMoves,dt,solved); setupVis(cs,solutionMoves); showToast(`Solved in ${solutionMoves.length} moves (${dt}ms)`,'success');
+  }catch(e){showErr(e.message); showToast(e.message,'error');}
+  finally{b.disabled=false; bt.textContent=ot;}
 }
-
-function checkSolveReady() {
-  const btn = document.getElementById('solve-btn');
-  const hint = document.getElementById('solve-hint');
-  const valid = isValidInput();
-  btn.disabled = !valid;
-  if (valid) {
-    hint.textContent = 'Ready to solve! Click "Solve Cube"';
-    hint.style.color = 'var(--success)';
-  } else {
-    hint.textContent = 'Complete all 6 faces with valid centers to enable solving';
-    hint.style.color = 'var(--text-dim)';
-  }
+function showOut(m,dt,sol){
+  $('output-section').hidden=false; $('output-section').scrollIntoView({behavior:'smooth'});
+  $('move-count').textContent=m.length; $('solve-time').textContent=dt+'ms'; $('phase-info').textContent=sol?'Solved ✓':'G1 Subgroup'; $('error-display').hidden=true;
+  $('moves-display').innerHTML=m.map((mv,i)=>{let cl='move'; if(mv.endsWith("'"))cl+=' prime'; else if(mv.endsWith('2'))cl+=' double'; return `<span class="${cl}" style="--i:${i}">${mv.replace("'","'").replace('2','2')}</span>`;}).join(' ');
+  $('copy-btn').hidden=false; $('copy-btn').onclick=()=>{navigator.clipboard.writeText(m.join(' ')); showToast('Copied!');};
 }
-
-function isValidInput() {
-  try { return validateCenters(currentStickers).valid; } catch { return false; }
+function showErr(m){$('error-message').textContent=m; $('error-display').hidden=false;}
+function hideOut(){$('output-section').hidden=true;}
+function setupVis(s,m){
+  $('visualizer-section').hidden=false;
+  animState={s:cloneState(s),moves:m,i:0,playing:false,timer:null};
+  visualizerCube.setState(s,{W:Face.U,Y:Face.D,R:Face.R,O:Face.L,G:Face.F,B:Face.B});
+  $('play-btn').onclick=play; $('pause-btn').onclick=pause; $('step-btn').onclick=step;
+  $('speed-slider').oninput=e=>{$('speed-label').textContent=e.target.value+'ms'; if(animState.playing){pause();play();}};
 }
+function hideVis(){$('visualizer-section').hidden=true;}
+function play(){if(animState.playing)return; animState.playing=true; $('play-btn').hidden=true; $('pause-btn').hidden=false; const sp=parseInt($('speed-slider').value); animState.timer=setInterval(()=>{if(animState.i>=animState.moves.length){pause();return;} step();},sp);}
+function pause(){if(animState.timer)clearInterval(animState.timer); animState.playing=false; $('play-btn').hidden=false; $('pause-btn').hidden=true;}
+function step(){if(animState.i>=animState.moves.length)return; const mv=animState.moves[animState.i]; animState.s=applyMove(animState.s,MOVE_TABLES[mv]); visualizerCube.setState(animState.s,{W:Face.U,Y:Face.D,R:Face.R,O:Face.L,G:Face.F,B:Face.B}); animState.i++; if(animState.i>=animState.moves.length) pause();}
 
-async function solve() {
-  const btn = document.getElementById('solve-btn');
-  const btnText = btn.querySelector('.btn-text');
-  const originalText = btnText.textContent;
-  btn.disabled = true;
-  btnText.innerHTML = '<span class="spinner"></span> Solving...';
-  hideOutput();
-  hideVisualizer();
-
-  try {
-    const validation = validateCenters(currentStickers);
-    if (!validation.valid) throw new Error(validation.error);
-
-    const cubeState = stickersToCubie(currentStickers, validation.colorToFace);
-    const stateValidation = validateCubeState(cubeState);
-    if (!stateValidation.valid) throw new Error(stateValidation.error);
-
-    const start = performance.now();
-    solutionMoves = solveCube(cubeState);
-    const elapsed = (performance.now() - start).toFixed(1);
-
-    if (!solutionMoves) throw new Error('No solution found within depth 12 (Phase 1 limit)');
-
-    const finalState = applyMoves(cubeState, solutionMoves);
-    const solved = equalsCube(finalState, SOLVED_STATE);
-
-    showOutput(solutionMoves, elapsed, solved);
-    setupVisualizer(cubeState, solutionMoves);
-    showToast(`Solved in ${solutionMoves.length} moves (${elapsed}ms)`, 'success');
-  } catch (e) {
-    showError(e.message);
-    showToast(e.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btnText.textContent = originalText;
-  }
-}
-
-function showOutput(moves, time, solved) {
-  const section = document.getElementById('output-section');
-  section.hidden = false;
-  section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-  document.getElementById('move-count').textContent = moves.length;
-  document.getElementById('solve-time').textContent = `${time}ms`;
-  document.getElementById('phase-info').textContent = solved ? 'Solved ✓' : 'G1 Subgroup';
-  document.getElementById('error-display').hidden = true;
-
-  const display = document.getElementById('moves-display');
-  display.innerHTML = moves.map((m, i) => {
-    let cls = 'move';
-    if (m.endsWith("'")) cls += ' prime';
-    else if (m.endsWith('2')) cls += ' double';
-    return `<span class="${cls}" style="--i: ${i}">${m.replace("'", "<span class='prime-symbol'>'</span>").replace('2', "<span class='double-symbol'>2</span>")}</span>`;
-  }).join(' ');
-
-  document.getElementById('copy-btn').hidden = false;
-  document.getElementById('copy-btn').onclick = () => {
-    navigator.clipboard.writeText(moves.join(' '));
-    showToast('Solution copied to clipboard!', 'success');
-  };
-}
-
-function showError(msg) {
-  const err = document.getElementById('error-display');
-  document.getElementById('error-message').textContent = msg;
-  err.hidden = false;
-}
-
-function hideOutput() { document.getElementById('output-section').hidden = true; }
-
-function setupVisualizer(initialState, moves) {
-  const section = document.getElementById('visualizer-section');
-  section.hidden = false;
-
-  if (!window.cube3dVisualizer) {
-    const container = document.getElementById('cube-3d-container');
-    if (container) {
-      window.cube3dVisualizer = new RubiksCube3D(container);
-    }
-  }
-
-  animState = { initialState: cloneState(initialState), moves, currentStep: 0, playing: false, timer: null };
-  const visualizer = window.cube3dVisualizer || cube3d;
-  if (visualizer) {
-    visualizer.setState(initialState, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
-  }
-
-  document.getElementById('play-btn').onclick = playAnimation;
-  document.getElementById('pause-btn').onclick = pauseAnimation;
-  document.getElementById('step-btn').onclick = stepAnimation;
-  document.getElementById('speed-slider').oninput = (e) => {
-    document.getElementById('speed-label').textContent = e.target.value + 'ms';
-    if (animState.playing) { pauseAnimation(); playAnimation(); }
-  };
-}
-
-function hideVisualizer() { document.getElementById('visualizer-section').hidden = true; }
-
-function getVisualizer() { return window.cube3dVisualizer || cube3d; }
-
-function playAnimation() {
-  if (animState.playing) return;
-  animState.playing = true;
-  document.getElementById('play-btn').hidden = true;
-  document.getElementById('pause-btn').hidden = false;
-  const speed = parseInt(document.getElementById('speed-slider').value);
-  animState.timer = setInterval(() => {
-    if (animState.currentStep >= animState.moves.length) { pauseAnimation(); return; }
-    stepAnimation();
-  }, speed);
-}
-
-function pauseAnimation() {
-  if (animState.timer) clearInterval(animState.timer);
-  animState.playing = false;
-  document.getElementById('play-btn').hidden = false;
-  document.getElementById('pause-btn').hidden = true;
-}
-
-function stepAnimation() {
-  if (animState.currentStep >= animState.moves.length) return;
-  const move = animState.moves[animState.currentStep];
-  animState.initialState = applyMove(animState.initialState, MOVE_TABLES[move]);
-  const faceToColor = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
-  const visualizer = getVisualizer();
-  if (visualizer) visualizer.setState(animState.initialState, faceToColor);
-  animState.currentStep++;
-  if (animState.currentStep >= animState.moves.length) pauseAnimation();
-}
-
-function onStickerChange(face, index, color) {
-  currentStickers[face][index] = color;
-  checkSolveReady();
-}
-
-window.app = { onStickerChange };
-
-document.addEventListener('DOMContentLoaded', () => {
-  initColorPalette();
-  init3DCubes();
-
-  document.getElementById('solve-btn').addEventListener('click', solve);
-  document.getElementById('reset-btn').addEventListener('click', resetCube);
-  document.getElementById('random-btn').addEventListener('click', randomScramble);
-
-  document.getElementById('about-link').addEventListener('click', (e) => {
-    e.preventDefault();
-    showToast('Rubik\'s Cube Solver v1.0 • Cubie Representation • Kociemba Phase 1', 'info');
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-    if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.getElementById('solve-btn').click(); }
-    if (e.key === 'r' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.getElementById('reset-btn').click(); }
-    if (e.key === ' ' && !e.target.closest('.color-btn')) { e.preventDefault(); if (animState && !animState.playing) playAnimation(); else if (animState) pauseAnimation(); }
-    const colorKeys = ['W', 'Y', 'R', 'O', 'G', 'B'];
-    const num = parseInt(e.key);
-    if (num >= 1 && num <= 6) { selectColor(colorKeys[num - 1]); }
+document.addEventListener('DOMContentLoaded',()=>{
+  initPalette(); resetAll();
+  $('solve-btn').onclick=solve; $('reset-btn').onclick=resetAll; $('random-btn').onclick=randomScramble;
+  $('about-link').onclick=e=>{e.preventDefault(); showToast('Rubik\'s Cube Solver • Cubie Rep • Kociemba P1');};
+  document.addEventListener('keydown',e=>{
+    if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;
+    if(e.key==='s'){e.preventDefault();$('solve-btn').click();}
+    if(e.key==='r'){e.preventDefault();$('reset-btn').click();}
+    if(e.key===' '&&!e.target.closest('.color-btn')){e.preventDefault(); if(animState&&!animState.playing)play(); else if(animState)pause();}
+    const ck=['W','Y','R','O','G','B']; const n=parseInt(e.key); if(n>=1&&n<=6)pickColor(ck[n-1]);
   });
 });
