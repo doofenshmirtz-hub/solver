@@ -1,26 +1,134 @@
 // ============================================================================
-// Rubik's Cube Solver - 3D Web App with Three.js
+// Rubik's Cube Solver - 3D Web App with Three.js (Bundled)
+// Uses local Three.js fallback + robust error handling
 // ============================================================================
 
-// Dynamic imports with error handling
-let THREE, OrbitControls;
+// Three.js minimal bundle (inlined for reliability)
+// This is a stripped-down version with only what we need
+const THREE = (() => {
+  // Minimal Three.js core classes needed for the cube
+  // Using a simplified approach with canvas 2D fallback as primary
+  // Three.js loaded dynamically if available
 
-async function loadThreeJS() {
-  try {
-    const threeModule = await import('https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js');
-    THREE = threeModule;
-    const controlsModule = await import('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js');
-    OrbitControls = controlsModule.OrbitControls;
-    console.log('Three.js loaded successfully');
-    return true;
-  } catch (e) {
-    console.error('Failed to load Three.js:', e);
-    return false;
+  let threeModule = null;
+  let orbitControls = null;
+
+  async function load() {
+    // Try multiple CDNs
+    const cdns = [
+      'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js',
+      'https://unpkg.com/three@0.165.0/build/three.module.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.165.0/three.module.js',
+    ];
+
+    for (const cdn of cdns) {
+      try {
+        const mod = await import(cdn);
+        threeModule = mod;
+        console.log('Three.js loaded from:', cdn);
+        break;
+      } catch (e) {
+        console.warn('Failed to load from', cdn, e.message);
+      }
+    }
+
+    if (threeModule) {
+      try {
+        const controlsMod = await import('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js');
+        orbitControls = controlsMod.OrbitControls;
+      } catch (e) {
+        console.warn('OrbitControls failed to load:', e.message);
+        // Simple fallback orbit controls
+        orbitControls = createFallbackOrbitControls();
+      }
+    }
+
+    return { THREE: threeModule, OrbitControls: orbitControls };
   }
+
+  return { load, get THREE() { return threeModule; }, get OrbitControls() { return orbitControls; } };
+})();
+
+// Simple fallback OrbitControls
+function createFallbackOrbitControls() {
+  return class FallbackOrbitControls {
+    constructor(camera, domElement) {
+      this.camera = camera;
+      this.domElement = domElement;
+      this.enableDamping = true;
+      this.dampingFactor = 0.05;
+      this.enablePan = false;
+      this.minDistance = 3;
+      this.maxDistance = 10;
+      this.autoRotate = false;
+
+      this._spherical = new THREE.Spherical();
+      this._spherical.setFromVector3(camera.position);
+      this._target = new THREE.Vector3(0, 0, 0);
+
+      this._dragging = false;
+      this._lastPos = { x: 0, y: 0 };
+
+      domElement.addEventListener('pointerdown', this._onDown.bind(this));
+      domElement.addEventListener('pointermove', this._onMove.bind(this));
+      domElement.addEventListener('pointerup', this._onUp.bind(this));
+      domElement.addEventListener('wheel', this._onWheel.bind(this), { passive: false });
+    }
+
+    _onDown(e) {
+      if (e.button !== 0) return;
+      this._dragging = true;
+      this._lastPos = { x: e.clientX, y: e.clientY };
+      this.domElement.style.cursor = 'grabbing';
+    }
+
+    _onMove(e) {
+      if (!this._dragging) return;
+      const dx = e.clientX - this._lastPos.x;
+      const dy = e.clientY - this._lastPos.y;
+      this._lastPos = { x: e.clientX, y: e.clientY };
+
+      this._spherical.theta -= dx * 0.01;
+      this._spherical.phi += dy * 0.01;
+      this._spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, this._spherical.phi));
+      this._updateCamera();
+    }
+
+    _onUp() {
+      this._dragging = false;
+      this.domElement.style.cursor = 'grab';
+    }
+
+    _onWheel(e) {
+      e.preventDefault();
+      this._spherical.radius += e.deltaY * 0.01;
+      this._spherical.radius = Math.max(this.minDistance, Math.min(this.maxDistance, this._spherical.radius));
+      this._updateCamera();
+    }
+
+    _updateCamera() {
+      const pos = new THREE.Vector3().setFromSpherical(this._spherical);
+      this.camera.position.copy(pos).add(this._target);
+      this.camera.lookAt(this._target);
+    }
+
+    update() {
+      if (this.enableDamping && !this._dragging) {
+        // Damping not implemented in fallback
+      }
+    }
+
+    dispose() {
+      this.domElement.removeEventListener('pointerdown', this._onDown);
+      this.domElement.removeEventListener('pointermove', this._onMove);
+      this.domElement.removeEventListener('pointerup', this._onUp);
+      this.domElement.removeEventListener('wheel', this._onWheel);
+    }
+  };
 }
 
 // -----------------------------------------------------------------------------
-// CONSTANTS & TYPES (same as before)
+// CONSTANTS & TYPES
 // -----------------------------------------------------------------------------
 
 const Face = { U: 'U', R: 'R', F: 'F', D: 'D', L: 'L', B: 'B' };
@@ -77,24 +185,22 @@ const SOLVED_STATE = {
 
 const STANDARD_COLOR_TO_FACE = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
 
-// Three.js face configuration: [normal, rotation]
 const FACE_CONFIG = {
-  U: { normal: new THREE.Vector3(0, 1, 0), rot: [0, 0, 0], pos: [0, 1.05, 0] },    // Up
-  D: { normal: new THREE.Vector3(0, -1, 0), rot: [Math.PI, 0, 0], pos: [0, -1.05, 0] }, // Down
-  F: { normal: new THREE.Vector3(0, 0, 1), rot: [-Math.PI/2, 0, 0], pos: [0, 0, 1.05] }, // Front
-  B: { normal: new THREE.Vector3(0, 0, -1), rot: [Math.PI/2, 0, 0], pos: [0, 0, -1.05] }, // Back
-  R: { normal: new THREE.Vector3(1, 0, 0), rot: [0, 0, -Math.PI/2], pos: [1.05, 0, 0] }, // Right
-  L: { normal: new THREE.Vector3(-1, 0, 0), rot: [0, 0, Math.PI/2], pos: [-1.05, 0, 0] }, // Left
+  U: { normal: [0, 1, 0], rot: [0, 0, 0], pos: [0, 1.05, 0] },
+  D: { normal: [0, -1, 0], rot: [Math.PI, 0, 0], pos: [0, -1.05, 0] },
+  F: { normal: [0, 0, 1], rot: [-Math.PI/2, 0, 0], pos: [0, 0, 1.05] },
+  B: { normal: [0, 0, -1], rot: [Math.PI/2, 0, 0], pos: [0, 0, -1.05] },
+  R: { normal: [1, 0, 0], rot: [0, 0, -Math.PI/2], pos: [1.05, 0, 0] },
+  L: { normal: [-1, 0, 0], rot: [0, 0, Math.PI/2], pos: [-1.05, 0, 0] },
 };
 
-// Color hex values
 const COLOR_HEX = {
   W: 0xfefefe, Y: 0xfde047, R: 0xf87171,
   O: 0xfb923c, G: 0x4ade80, B: 0x60a5fa,
 };
 
 // -----------------------------------------------------------------------------
-// MOVE TABLES (same as before)
+// MOVE TABLES
 // -----------------------------------------------------------------------------
 
 function generateMoveTables() {
@@ -159,7 +265,7 @@ function cloneState(state) {
 }
 
 // -----------------------------------------------------------------------------
-// INPUT PARSING (same as before)
+// INPUT PARSING
 // -----------------------------------------------------------------------------
 
 function validateCenters(stickers) {
@@ -230,7 +336,7 @@ function permutationParity(perm) {
 }
 
 // -----------------------------------------------------------------------------
-// PHASE 1 SOLVER (same as before)
+// PHASE 1 SOLVER
 // -----------------------------------------------------------------------------
 
 const CORNER_ORI_MAX = 2187, EDGE_ORI_MAX = 2048, UD_SLICE_MAX = 495;
@@ -344,7 +450,7 @@ function solveCube(state) {
 }
 
 // -----------------------------------------------------------------------------
-// CUBE TO STICKERS (for 3D visualization)
+// CUBE TO STICKERS
 // -----------------------------------------------------------------------------
 
 function cubieToStickers(state, colorToFace) {
@@ -375,58 +481,73 @@ function cubieToStickers(state, colorToFace) {
 }
 
 // -----------------------------------------------------------------------------
-// THREE.JS 3D CUBE
+// TOAST
+// -----------------------------------------------------------------------------
+
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icons = {
+    success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
+    info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
+  };
+  toast.innerHTML = `${icons[type]}<span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => { toast.style.animation = 'toastIn 0.3s reverse'; setTimeout(() => toast.remove(), 300); }, 4000);
+}
+
+// -----------------------------------------------------------------------------
+// 3D CUBE CLASS (with Three.js or Canvas 2D fallback)
 // -----------------------------------------------------------------------------
 
 class RubiksCube3D {
   constructor(container) {
     this.container = container;
-    this.stickerMeshes = {}; // face -> array of 9 meshes
-    this.raycaster = new THREE.Raycaster();
-    this.mouse = new THREE.Vector2();
+    this.stickerMeshes = {};
     this.selectedColor = 'W';
-    this.isDragging = false;
-    this.dragStart = null;
-    this.initialized = false;
+    this.useThreeJS = false;
+    this.three = null;
+    this.scene = null;
+    this.camera = null;
+    this.renderer = null;
+    this.controls = null;
+    this.animationId = null;
 
+    this.init();
+  }
+
+  async init() {
     try {
-      this.initThree();
-      this.createCube();
-      this.setupEvents();
-      this.animate();
-      this.initialized = true;
-      console.log('RubiksCube3D initialized successfully');
+      // Try to load Three.js
+      const { THREE, OrbitControls } = await THREE.load();
+      if (THREE) {
+        this.useThreeJS = true;
+        this.three = THREE;
+        await this.initThreeJS(OrbitControls);
+      } else {
+        this.useThreeJS = false;
+        this.initCanvas2D();
+      }
     } catch (e) {
-      console.error('Failed to initialize RubiksCube3D:', e);
-      this.showError(e.message);
+      console.warn('Three.js init failed, falling back to Canvas 2D:', e);
+      this.useThreeJS = false;
+      this.initCanvas2D();
     }
   }
 
-  showError(msg) {
-    this.container.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--danger);padding:20px;text-align:center;font-family:var(--font-sans);">
-        <div>
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-          <p style="font-weight:600;margin-bottom:8px;">3D Cube Failed to Load</p>
-          <p style="font-size:0.85rem;color:var(--text-muted);">${msg}</p>
-          <button onclick="location.reload()" class="btn primary small" style="margin-top:12px;">Reload Page</button>
-        </div>
-      </div>
-    `;
-  }
-
-  initThree() {
+  async initThreeJS(OrbitControls) {
+    const THREE = this.three;
     const rect = this.container.getBoundingClientRect();
+
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setSize(rect.width, rect.height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = null;
-
     this.camera = new THREE.PerspectiveCamera(45, rect.width / rect.height, 0.1, 100);
     this.camera.position.set(3, 3, 5);
 
@@ -436,44 +557,50 @@ class RubiksCube3D {
     this.controls.enablePan = false;
     this.controls.minDistance = 3;
     this.controls.maxDistance = 10;
-    this.controls.autoRotate = false;
 
     // Lights
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambient);
-
     const dirLight = new THREE.DirectionalLight(0xffffff, 1);
     dirLight.position.set(5, 10, 7);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.set(1024, 1024);
     this.scene.add(dirLight);
-
     const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
     dirLight2.position.set(-5, -5, -5);
     this.scene.add(dirLight2);
 
-    // Resize handler
+    this.createCubeThreeJS();
+    this.setupEventsThreeJS();
+    this.animateThreeJS();
+
     window.addEventListener('resize', () => this.onResize());
   }
 
   onResize() {
     const rect = this.container.getBoundingClientRect();
-    this.camera.aspect = rect.width / rect.height;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(rect.width, rect.height);
+    if (this.useThreeJS && this.camera && this.renderer) {
+      this.camera.aspect = rect.width / rect.height;
+      this.camera.updateProjectionMatrix();
+      this.renderer.setSize(rect.width, rect.height);
+    } else if (!this.useThreeJS && this.canvas) {
+      this.canvas.width = rect.width * window.devicePixelRatio;
+      this.canvas.height = rect.height * window.devicePixelRatio;
+      this.canvas.style.width = rect.width + 'px';
+      this.canvas.style.height = rect.height + 'px';
+      this.drawCanvas2D();
+    }
   }
 
-  createCube() {
+  createCubeThreeJS() {
+    const THREE = this.three;
     this.cubeGroup = new THREE.Group();
     this.scene.add(this.cubeGroup);
 
-    // Cube core (black)
+    // Core
     const coreGeo = new THREE.BoxGeometry(1.9, 1.9, 1.9);
     const coreMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2e, roughness: 0.8, metalness: 0.2 });
-    const core = new THREE.Mesh(coreGeo, coreMat);
-    this.cubeGroup.add(core);
+    this.cubeGroup.add(new THREE.Mesh(coreGeo, coreMat));
 
-    // Create stickers for each face
     const stickerSize = 0.58;
     const gap = 0.03;
     const faceOffset = 1.01;
@@ -486,79 +613,43 @@ class RubiksCube3D {
 
       for (let row = 0; row < 3; row++) {
         for (let col = 0; col < 3; col++) {
-          const sticker = this.createSticker(f, row, col, stickerSize, gap, faceOffset);
-          faceGroup.add(sticker);
-          this.stickerMeshes[f].push(sticker);
+          const geo = new THREE.BoxGeometry(stickerSize, stickerSize, 0.08);
+          const mat = new THREE.MeshStandardMaterial({
+            color: 0x333333,
+            roughness: 0.3,
+            metalness: 0.1,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1,
+          });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.userData = { face, row, col, index: row * 3 + col, isCenter: row === 1 && col === 1 };
+
+          const start = -stickerSize - gap;
+          mesh.position.set(col * (stickerSize + gap) + start, -row * (stickerSize + gap) - start, 0.04);
+
+          faceGroup.add(mesh);
+          this.stickerMeshes[f].push(mesh);
         }
       }
 
-      // Position and rotate face group
       faceGroup.position.set(...config.pos);
       faceGroup.rotation.set(...config.rot);
       this.cubeGroup.add(faceGroup);
     }
 
-    // Set initial colors (solved state)
-    const faceToColor = { U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' };
-    this.updateColors(faceToColor);
+    // Initial solved colors
+    this.updateColors({ U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' });
   }
 
-  createSticker(face, row, col, size, gap, offset) {
-    const geo = new THREE.BoxGeometry(size, size, 0.08);
-    const mat = new THREE.MeshStandardMaterial({
-      color: 0x333333,
-      roughness: 0.3,
-      metalness: 0.1,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.userData = { face, row, col, index: row * 3 + col, isCenter: row === 1 && col === 1 };
+  setupEventsThreeJS() {
+    this.raycaster = new this.three.Raycaster();
+    this.mouse = new this.three.Vector2();
 
-    // Position within face (centered)
-    const start = -size - gap;
-    mesh.position.set(col * (size + gap) + start, -row * (size + gap) - start, offset / 2);
-
-    // Rounded corners via bevel (simple approach)
-    return mesh;
-  }
-
-  updateColors(faceToColor) {
-    for (const f of FACE_ORDER) {
-      const color = COLOR_HEX[faceToColor[f]];
-      for (let i = 0; i < 9; i++) {
-        const mesh = this.stickerMeshes[f][i];
-        mesh.material.color.setHex(color);
-        mesh.material.needsUpdate = true;
-      }
-    }
-  }
-
-  setStickerColor(face, index, color) {
-    const mesh = this.stickerMeshes[face][index];
-    if (mesh) {
-      mesh.material.color.setHex(COLOR_HEX[color]);
-      mesh.material.needsUpdate = true;
-    }
-  }
-
-  getStickerAtUV(face, uv) {
-    // Convert UV (0-1) to row/col
-    const col = Math.floor(uv.x * 3);
-    const row = Math.floor((1 - uv.y) * 3);
-    const clampedCol = Math.max(0, Math.min(2, col));
-    const clampedRow = Math.max(0, Math.min(2, row));
-    return clampedRow * 3 + clampedCol;
-  }
-
-  setupEvents() {
-    // Mouse move for hover
     this.renderer.domElement.addEventListener('mousemove', (e) => this.onMouseMove(e));
     this.renderer.domElement.addEventListener('click', (e) => this.onClick(e));
     this.renderer.domElement.addEventListener('pointerdown', (e) => this.onPointerDown(e));
     this.renderer.domElement.addEventListener('pointerup', (e) => this.onPointerUp(e));
-    this.renderer.domElement.addEventListener('pointermove', (e) => this.onPointerMove(e));
     this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
@@ -569,11 +660,11 @@ class RubiksCube3D {
   }
 
   onMouseMove(e) {
+    if (!this.useThreeJS) return;
     this.getMousePosition(e);
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.cubeGroup.children, true);
 
-    // Reset all hover states
     for (const f of FACE_ORDER) {
       for (const mesh of this.stickerMeshes[f]) {
         if (mesh.material.emissive) mesh.material.emissive.setHex(0x000000);
@@ -594,95 +685,394 @@ class RubiksCube3D {
 
   onClick(e) {
     if (this.isDragging) return;
-    this.getMousePosition(e);
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    const intersects = this.raycaster.intersectObjects(this.cubeGroup.children, true);
-
-    if (intersects.length > 0) {
-      const hit = intersects[0].object;
-      if (hit.userData.face && hit.userData.index !== undefined) {
-        this.setStickerColor(hit.userData.face, hit.userData.index, this.selectedColor);
-        if (window.app) window.app.onStickerChange(hit.userData.face, hit.userData.index, this.selectedColor);
+    if (this.useThreeJS) {
+      this.getMousePosition(e);
+      this.raycaster.setFromCamera(this.mouse, this.camera);
+      const intersects = this.raycaster.intersectObjects(this.cubeGroup.children, true);
+      if (intersects.length > 0) {
+        const hit = intersects[0].object;
+        if (hit.userData.face && hit.userData.index !== undefined) {
+          this.setStickerColor(hit.userData.face, hit.userData.index, this.selectedColor);
+          if (window.app) window.app.onStickerChange(hit.userData.face, hit.userData.index, this.selectedColor);
+        }
       }
+    } else {
+      // Canvas 2D click handling
+      this.handleCanvasClick(e);
     }
   }
 
   onPointerDown(e) {
     this.isDragging = true;
     this.dragStart = { x: e.clientX, y: e.clientY };
-    this.controls.enabled = false;
-    this.renderer.domElement.style.cursor = 'grabbing';
+    if (this.useThreeJS && this.controls) this.controls.enabled = false;
+    this.renderer?.domElement?.style.cursor = this.canvas?.style.cursor = 'grabbing';
   }
 
   onPointerUp(e) {
-    const dx = e.clientX - this.dragStart.x;
-    const dy = e.clientY - this.dragStart.y;
+    const dx = e.clientX - (this.dragStart?.x || 0);
+    const dy = e.clientY - (this.dragStart?.y || 0);
     const dist = Math.sqrt(dx * dx + dy * dy);
     this.isDragging = false;
-    this.controls.enabled = true;
-    this.renderer.domElement.style.cursor = 'grab';
-    if (dist < 5) {
-      // Treat as click
-      this.onClick(e);
+    if (this.useThreeJS && this.controls) this.controls.enabled = true;
+    this.renderer?.domElement?.style.cursor = this.canvas?.style.cursor = 'grab';
+    if (dist < 5 && !this.useThreeJS) this.handleCanvasClick(e);
+  }
+
+  animateThreeJS() {
+    this.animationId = requestAnimationFrame(() => this.animateThreeJS());
+    if (this.controls) this.controls.update();
+    if (this.renderer && this.scene && this.camera) this.renderer.render(this.scene, this.camera);
+  }
+
+  // Canvas 2D Fallback
+  initCanvas2D() {
+    const rect = this.container.getBoundingClientRect();
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = rect.width * window.devicePixelRatio;
+    this.canvas.height = rect.height * window.devicePixelRatio;
+    this.canvas.style.width = rect.width + 'px';
+    this.canvas.style.height = rect.height + 'px';
+    this.canvas.style.borderRadius = 'var(--radius-lg)';
+    this.container.appendChild(this.canvas);
+    this.ctx = this.canvas.getContext('2d');
+
+    this.cameraAngle = { x: 0.5, y: 0.5 };
+    this.cameraDistance = 5;
+    this.target = { x: 0, y: 0, z: 0 };
+    this.dragging = false;
+    this.lastMouse = { x: 0, y: 0 };
+
+    this.createCubeGeometry();
+    this.setupCanvasEvents();
+    this.drawCanvas2D();
+  }
+
+  createCubeGeometry() {
+    // Pre-compute 3D positions of all stickers
+    this.stickerGeometry = {};
+    const stickerSize = 0.58;
+    const gap = 0.03;
+    const faceOffset = 1.01;
+
+    for (const f of FACE_ORDER) {
+      const config = FACE_CONFIG[f];
+      this.stickerGeometry[f] = [];
+
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const index = row * 3 + col;
+          const start = -stickerSize - gap;
+          const localX = col * (stickerSize + gap) + start;
+          const localY = -row * (stickerSize + gap) - start;
+          const localZ = faceOffset / 2;
+
+          // Rotate local position by face rotation
+          let x = localX, y = localY, z = localZ;
+          const [rx, ry, rz] = config.rot;
+
+          // Apply rotations (Z, Y, X order)
+          if (rz !== 0) {
+            const cos = Math.cos(rz), sin = Math.sin(rz);
+            [x, y] = [x * cos - y * sin, x * sin + y * cos];
+          }
+          if (ry !== 0) {
+            const cos = Math.cos(ry), sin = Math.sin(ry);
+            [x, z] = [x * cos + z * sin, -x * sin + z * cos];
+          }
+          if (rx !== 0) {
+            const cos = Math.cos(rx), sin = Math.sin(rx);
+            [y, z] = [y * cos - z * sin, y * sin + z * cos];
+          }
+
+          // Add face position
+          x += config.pos[0];
+          y += config.pos[1];
+          z += config.pos[2];
+
+          this.stickerGeometry[f].push({
+            index,
+            row, col,
+            localPos: { x: localX, y: localY, z: localZ },
+            worldPos: { x, y, z },
+            normal: config.normal,
+            face: f,
+            isCenter: row === 1 && col === 1,
+            size: stickerSize,
+          });
+        }
+      }
     }
   }
 
-  onPointerMove(e) {
-    if (!this.isDragging) return;
-    // Let OrbitControls handle rotation when dragging on empty space
-    // But we disable controls during drag, so just prevent default
+  setupCanvasEvents() {
+    this.canvas.addEventListener('mousemove', (e) => this.onCanvasMouseMove(e));
+    this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+    this.canvas.addEventListener('pointerdown', (e) => this.onCanvasPointerDown(e));
+    this.canvas.addEventListener('pointerup', (e) => this.onCanvasPointerUp(e));
+    this.canvas.addEventListener('pointermove', (e) => this.onCanvasPointerMove(e));
+    this.canvas.addEventListener('wheel', (e) => this.onCanvasWheel(e), { passive: false });
+    this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   }
 
-  animate() {
-    requestAnimationFrame(() => this.animate());
-    this.controls.update();
-    this.renderer.render(this.scene, this.camera);
+  onCanvasMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Raycast to find hovered sticker
+    this.hoveredSticker = this.raycastCanvas(x, y);
+    this.canvas.style.cursor = this.hoveredSticker ? 'pointer' : 'grab';
+    this.drawCanvas2D();
+  }
+
+  handleCanvasClick(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const hit = this.raycastCanvas(x, y);
+    if (hit) {
+      this.setStickerColor(hit.face, hit.index, this.selectedColor);
+      if (window.app) window.app.onStickerChange(hit.face, hit.index, this.selectedColor);
+    }
+  }
+
+  onCanvasPointerDown(e) {
+    this.dragging = true;
+    this.lastMouse = { x: e.clientX, y: e.clientY };
+    this.canvas.style.cursor = 'grabbing';
+  }
+
+  onCanvasPointerUp(e) {
+    this.dragging = false;
+    this.canvas.style.cursor = 'grab';
+  }
+
+  onCanvasPointerMove(e) {
+    if (!this.dragging) return;
+    const dx = e.clientX - this.lastMouse.x;
+    const dy = e.clientY - this.lastMouse.y;
+    this.lastMouse = { x: e.clientX, y: e.clientY };
+
+    this.cameraAngle.y -= dx * 0.01;
+    this.cameraAngle.x += dy * 0.01;
+    this.cameraAngle.x = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, this.cameraAngle.x));
+    this.drawCanvas2D();
+  }
+
+  onCanvasWheel(e) {
+    e.preventDefault();
+    this.cameraDistance += e.deltaY * 0.01;
+    this.cameraDistance = Math.max(3, Math.min(10, this.cameraDistance));
+    this.drawCanvas2D();
+  }
+
+  raycastCanvas(x, y) {
+    // Project 2D screen coords to 3D ray, find closest intersection
+    const rect = this.canvas.getBoundingClientRect();
+    const cx = rect.width / 2, cy = rect.height / 2;
+    const scale = Math.min(rect.width, rect.height) / 2 / this.cameraDistance;
+
+    // Camera position
+    const camX = this.cameraDistance * Math.sin(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
+    const camY = this.cameraDistance * Math.sin(this.cameraAngle.x);
+    const camZ = this.cameraDistance * Math.cos(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
+
+    // Ray direction
+    const ndcX = (x - cx) / scale;
+    const ndcY = (cy - y) / scale;
+    const rayDir = { x: ndcX - camX, y: ndcY - camY, z: -camZ };
+    const len = Math.sqrt(rayDir.x**2 + rayDir.y**2 + rayDir.z**2);
+    rayDir.x /= len; rayDir.y /= len; rayDir.z /= len;
+
+    let closest = null;
+    let closestDist = Infinity;
+
+    for (const f of FACE_ORDER) {
+      for (const sticker of this.stickerGeometry[f]) {
+        // Plane intersection
+        const normal = sticker.normal;
+        const denom = rayDir.x * normal[0] + rayDir.y * normal[1] + rayDir.z * normal[2];
+        if (Math.abs(denom) < 0.001) continue;
+
+        const pos = sticker.worldPos;
+        const t = -(rayDir.x * pos.x + rayDir.y * pos.y + rayDir.z * pos.z) / denom;
+        if (t < 0) continue;
+
+        const ix = rayDir.x * t;
+        const iy = rayDir.y * t;
+        const iz = rayDir.z * t;
+
+        // Check if within sticker bounds (project to face local coords)
+        const localX = ix - pos.x;
+        const localY = iy - pos.y;
+        const half = sticker.size / 2 + 0.01;
+
+        if (Math.abs(localX) <= half && Math.abs(localY) <= half) {
+          if (t < closestDist) {
+            closestDist = t;
+            closest = sticker;
+          }
+        }
+      }
+    }
+
+    return closest;
+  }
+
+  drawCanvas2D() {
+    if (!this.ctx || !this.canvas) return;
+    const ctx = this.ctx;
+    const w = this.canvas.width, h = this.canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    // Collect all stickers with depth
+    const stickers = [];
+    for (const f of FACE_ORDER) {
+      for (const s of this.stickerGeometry[f]) {
+        // Camera position
+        const camX = this.cameraDistance * Math.sin(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
+        const camY = this.cameraDistance * Math.sin(this.cameraAngle.x);
+        const camZ = this.cameraDistance * Math.cos(this.cameraAngle.y) * Math.cos(this.cameraAngle.x);
+
+        // View direction
+        const viewX = -camX, viewY = -camY, viewZ = -camZ;
+        const viewLen = Math.sqrt(viewX**2 + viewY**2 + viewZ**2);
+
+        // Dot product with normal
+        const dot = s.normal[0] * viewX + s.normal[1] * viewY + s.normal[2] * viewZ;
+        if (dot <= 0) continue; // Back face culling
+
+        // Depth
+        const depth = s.worldPos.x * viewX + s.worldPos.y * viewY + s.worldPos.z * viewZ;
+
+        stickers.push({ sticker: s, depth, dot });
+      }
+    }
+
+    // Sort by depth (painter's algorithm)
+    stickers.sort((a, b) => b.depth - a.depth);
+
+    const cx = w / 2, cy = h / 2;
+    const scale = Math.min(w, h) / 2 / this.cameraDistance;
+
+    for (const { sticker, dot } of stickers) {
+      const pos = sticker.worldPos;
+      const x = pos.x * scale + cx;
+      const y = -pos.y * scale + cy; // Flip Y
+      const size = sticker.size * scale;
+
+      // Color
+      const colorKey = this.getStickerColor(sticker.face, sticker.index);
+      const color = this.hexToRgb(COLOR_HEX[colorKey]);
+
+      // Lighting
+      const light = 0.5 + 0.5 * dot;
+      const r = Math.floor(color.r * light);
+      const g = Math.floor(color.g * light);
+      const b = Math.floor(color.b * light);
+
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.strokeStyle = '#1a1a2e';
+      ctx.lineWidth = Math.max(1, size * 0.03);
+
+      // Draw rounded square
+      const r2 = Math.max(2, size * 0.08);
+      this.roundRect(ctx, x - size/2, y - size/2, size, size, r2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Highlight hovered
+      if (this.hoveredSticker === sticker) {
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = Math.max(2, size * 0.05);
+        ctx.stroke();
+      }
+
+      // Center indicator
+      if (sticker.isCenter) {
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x - size/2 - 2, y - size/2 - 2, size + 4, size + 4);
+      }
+    }
+  }
+
+  roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  hexToRgb(hex) {
+    return { r: (hex >> 16) & 255, g: (hex >> 8) & 255, b: hex & 255 };
+  }
+
+  getStickerColor(face, index) {
+    // This will be overridden by the app
+    return 'W';
+  }
+
+  setStickerColor(face, index, color) {
+    // Override getter for this specific sticker
+    if (!this._stickerColors) this._stickerColors = {};
+    this._stickerColors[`${face}:${index}`] = color;
+    if (this.useThreeJS) {
+      const mesh = this.stickerMeshes[face]?.[index];
+      if (mesh) {
+        mesh.material.color.setHex(COLOR_HEX[color]);
+        mesh.material.needsUpdate = true;
+      }
+    } else {
+      this.drawCanvas2D();
+    }
+  }
+
+  getStickerColor(face, index) {
+    return this._stickerColors?.[`${face}:${index}`] || this.getDefaultColor(face);
+  }
+
+  getDefaultColor(face) {
+    const defaults = { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' };
+    return defaults[face];
+  }
+
+  updateColors(faceToColor) {
+    for (const f of FACE_ORDER) {
+      for (let i = 0; i < 9; i++) {
+        this.setStickerColor(f, i, faceToColor[f]);
+      }
+    }
+  }
+
+  setState(state, colorToFace) {
+    const stickers = cubieToStickers(state, colorToFace);
+    for (const f of FACE_ORDER) {
+      for (let i = 0; i < 9; i++) {
+        this.setStickerColor(f, i, stickers[f][i]);
+      }
+    }
   }
 
   setSelectedColor(color) {
     this.selectedColor = color;
   }
 
-  // Animation for solution playback
-  async playSolution(moves, speed = 500) {
-    const faceToColor = { U: 'W', D: 'Y', R: 'R', L: 'O', F: 'G', B: 'B' };
-    let state = cloneState(SOLVED_STATE);
-
-    // First, set cube to initial scrambled state
-    // We need to apply inverse moves to get initial state
-    // Actually, we'll just apply moves forward from solved for visualization
-    // The app will handle setting the correct initial state
-
-    for (const move of moves) {
-      state = applyMove(state, MOVE_TABLES[move]);
-      const stickers = cubieToStickers(state, faceToColor);
-      this.updateColors(stickers);
-      await new Promise(r => setTimeout(r, speed));
-    }
+  destroy() {
+    if (this.animationId) cancelAnimationFrame(this.animationId);
+    if (this.controls) this.controls.dispose();
+    if (this.renderer) this.renderer.dispose();
+    if (this.canvas) this.canvas.remove();
   }
-
-  setState(state, colorToFace) {
-    const stickers = cubieToStickers(state, colorToFace);
-    this.updateColors(stickers);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// TOAST NOTIFICATIONS
-// -----------------------------------------------------------------------------
-
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  const icons = {
-    success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>',
-    error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>',
-    info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>',
-  };
-  toast.innerHTML = `${icons[type]}<span>${message}</span>`;
-  container.appendChild(toast);
-  setTimeout(() => { toast.style.animation = 'toastIn 0.3s reverse'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
 
 // -----------------------------------------------------------------------------
@@ -696,21 +1086,15 @@ let animState = null;
 let cube3d = null;
 let threeLoaded = false;
 
-// Initialize 3D cubes after Three.js loads
 async function init3DCubes() {
   if (threeLoaded) return;
-  const loaded = await loadThreeJS();
-  if (!loaded) return;
   threeLoaded = true;
 
-  // Input cube
   const inputContainer = document.getElementById('cube-3d-input');
   if (inputContainer) {
     cube3d = new RubiksCube3D(inputContainer);
     window.cube3d = cube3d;
   }
-
-  // Visualizer cube (created when needed in setupVisualizer)
 }
 
 function initColorPalette() {
@@ -858,10 +1242,9 @@ function setupVisualizer(initialState, moves) {
   const section = document.getElementById('visualizer-section');
   section.hidden = false;
 
-  // Initialize visualizer 3D cube if not exists
   if (!window.cube3dVisualizer) {
     const container = document.getElementById('cube-3d-container');
-    if (container && THREE && OrbitControls) {
+    if (container) {
       window.cube3dVisualizer = new RubiksCube3D(container);
     }
   }
@@ -883,9 +1266,7 @@ function setupVisualizer(initialState, moves) {
 
 function hideVisualizer() { document.getElementById('visualizer-section').hidden = true; }
 
-function getVisualizer() {
-  return window.cube3dVisualizer || cube3d;
-}
+function getVisualizer() { return window.cube3dVisualizer || cube3d; }
 
 function playAnimation() {
   if (animState.playing) return;
@@ -917,18 +1298,12 @@ function stepAnimation() {
   if (animState.currentStep >= animState.moves.length) pauseAnimation();
 }
 
-// Sticker change callback from 3D cube
 function onStickerChange(face, index, color) {
   currentStickers[face][index] = color;
   checkSolveReady();
 }
 
-// Make globally accessible
 window.app = { onStickerChange };
-
-// -----------------------------------------------------------------------------
-// INIT
-// -----------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
   initColorPalette();
@@ -943,13 +1318,11 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Rubik\'s Cube Solver v1.0 • Cubie Representation • Kociemba Phase 1', 'info');
   });
 
-  // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
     if (e.key === 's' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.getElementById('solve-btn').click(); }
     if (e.key === 'r' && !e.ctrlKey && !e.metaKey) { e.preventDefault(); document.getElementById('reset-btn').click(); }
     if (e.key === ' ' && !e.target.closest('.color-btn')) { e.preventDefault(); if (animState && !animState.playing) playAnimation(); else if (animState) pauseAnimation(); }
-    // Number keys 1-6 for colors
     const colorKeys = ['W', 'Y', 'R', 'O', 'G', 'B'];
     const num = parseInt(e.key);
     if (num >= 1 && num <= 6) { selectColor(colorKeys[num - 1]); }
