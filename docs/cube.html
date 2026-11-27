@@ -41,6 +41,29 @@
         <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers on the cube">
         </div>
 
+        <div class="camera-entry">
+          <button type="button" id="camera-open" class="btn secondary">Scan faces with camera</button>
+          <div id="camera-panel" class="camera-panel" hidden>
+            <p class="section-desc">Select the face you are holding toward the camera. Keep the full face square in view, then capture it. You can correct every sticker manually afterward.</p>
+            <label for="camera-face">Face being scanned</label>
+            <select id="camera-face" class="camera-face-select">
+              <option value="U">U — Up / White</option>
+              <option value="R">R — Right / Red</option>
+              <option value="F">F — Front / Green</option>
+              <option value="D">D — Down / Yellow</option>
+              <option value="L">L — Left / Orange</option>
+              <option value="B">B — Back / Blue</option>
+            </select>
+            <video id="camera-video" autoplay playsinline muted></video>
+            <canvas id="camera-canvas" hidden></canvas>
+            <div class="camera-actions">
+              <button type="button" id="camera-capture" class="btn primary">Capture this face</button>
+              <button type="button" id="camera-close" class="btn secondary">Close camera</button>
+            </div>
+            <p id="camera-status" class="hint" aria-live="polite">Camera is off.</p>
+          </div>
+        </div>
+
         <div class="actions">
           <button id="solve-btn" class="btn primary" disabled aria-describedby="solve-hint">
             <span class="btn-text">Solve Cube</span>

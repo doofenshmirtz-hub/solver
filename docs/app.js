@@ -89,7 +89,7 @@ const moveDefs = {
   R: { cp: [4,1,2,0,7,5,6,3], co: [2,0,0,1,1,0,0,2], ep: [8,1,2,3,11,5,6,7,4,9,10,0], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
   F: { cp: [1,5,2,3,0,4,6,7], co: [1,2,0,0,2,1,0,0], ep: [0,9,2,3,4,8,6,7,1,5,10,11], eo: [0,1,0,0,0,1,0,0,1,1,0,0] },
   D: { cp: [0,1,2,3,5,6,7,4], co: [0,0,0,0,0,0,0,0], ep: [0,1,2,3,5,6,7,4,8,9,10,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
-  L: { cp: [0,2,6,3,4,1,5,7], co: [0,1,2,0,0,2,1,0], ep: [0,1,10,3,4,5,9,7,8,2,11,6], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
+  L: { cp: [0,2,6,3,4,1,5,7], co: [0,1,2,0,0,2,1,0], ep: [0,1,11,3,4,5,9,7,8,2,10,6], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
   B: { cp: [0,1,3,7,4,5,2,6], co: [0,0,1,2,0,0,2,1], ep: [0,1,2,11,4,5,6,10,8,9,3,7], eo: [0,0,0,1,0,0,0,1,0,0,1,1] },
 };
 
@@ -132,13 +132,25 @@ function cloneState(s) {
 // Phase 1: Solve to G1 subgroup (edges oriented, corners oriented, E-slice in place)
 // Coordinates: corner orientation (3^7=2187), edge orientation (2^11=2048), E-slice (495)
 
-function solveCube(state) {
-  // Phase 1: Iterative deepening IDA* to reach G1 subgroup
-  for (let d = 0; d <= 12; d++) {
-    const result = idsSearch(state, d, -1, []);
-    if (result) return result;
-  }
-  return null;
+function solveCube(facelets) {
+  return new Promise((resolve, reject) => {
+    if (typeof Worker === 'undefined') {
+      reject(new Error('This browser does not support background cube solving.'));
+      return;
+    }
+
+    const worker = new Worker('cube-solver-worker.js', { type: 'module' });
+    worker.onmessage = (event) => {
+      worker.terminate();
+      if (event.data && event.data.ok && event.data.verified) resolve(event.data);
+      else reject(new Error(event.data?.error || 'The cube solver failed to verify its result.'));
+    };
+    worker.onerror = (event) => {
+      worker.terminate();
+      reject(new Error('Could not load the cube-solving engine. Check your internet connection and reload the page.'));
+    };
+    worker.postMessage({ facelets });
+  });
 }
 
 function idsSearch(state, depth, lastMove, path) {
@@ -162,6 +174,21 @@ function idsSearch(state, depth, lastMove, path) {
 // -----------------------------------------------------------------------------
 
 function validateCenters(stickers) {
+  const counts = Object.fromEntries(COLORS.map(color => [color, 0]));
+  for (const face of FACE_ORDER) {
+    if (!Array.isArray(stickers[face]) || stickers[face].length !== 9) {
+      return { valid: false, error: 'Each cube face must contain exactly 9 stickers.' };
+    }
+    for (const color of stickers[face]) {
+      if (!(color in counts)) return { valid: false, error: 'Unknown sticker color detected.' };
+      counts[color]++;
+    }
+  }
+  const incorrectCount = Object.entries(counts).find(([, count]) => count !== 9);
+  if (incorrectCount) {
+    return { valid: false, error: 'A valid 3×3 cube must have exactly 9 stickers of each color. ' + incorrectCount[0] + ' currently has ' + incorrectCount[1] + '.' };
+  }
+
   const centers = {};
   for (const f of FACE_ORDER) centers[f] = stickers[f][4];
   if (new Set(Object.values(centers)).size !== 6) return { valid: false, error: 'Center colors must be 6 distinct colors' };
@@ -353,6 +380,14 @@ class CubeRenderer {
   setColor(f, i, c) { this.stickerColors[f + ':' + i] = c; this.draw(); }
   setAll(colors) { for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, colors[f]); }
   setState(s, ct) { const st = cubieToStickers(s, ct); for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, st[f][i]); }
+  setFacelets(facelets, faceToColor) {
+    if (typeof facelets !== 'string' || facelets.length !== 54) throw new Error('Invalid facelet snapshot');
+    for (let f = 0; f < FACE_ORDER.length; f++) {
+      const face = FACE_ORDER[f];
+      for (let i = 0; i < 9; i++) this.stickerColors[face + ':' + i] = faceToColor[facelets[f * 9 + i]];
+    }
+    this.draw();
+  }
 
   onMove(e) {
     const r = this.el.getBoundingClientRect();
@@ -479,6 +514,8 @@ function initApp() {
     appReady = true;
   }, 100);
 
+  initCameraInput();
+
   // Event listeners
   const solveBtn = document.getElementById('solve-btn');
   const resetBtn = document.getElementById('reset-btn');
@@ -557,38 +594,40 @@ function checkReady() {
   }
 }
 
-function solve() {
+async function solve() {
   const b = document.getElementById('solve-btn');
   const bt = b.querySelector('.btn-text');
-  const ot = bt.textContent;
+  const originalText = bt.textContent;
   b.disabled = true;
-  bt.textContent = 'Solving...';
+  bt.textContent = 'Preparing solver...';
   hideOutput();
   hideVisualizer();
 
   try {
-    const v = validateCenters(currentStickers);
-    if (!v.valid) throw new Error(v.error);
+    const validation = validateCenters(currentStickers);
+    if (!validation.valid) throw new Error(validation.error);
 
-    const cs = stickersToCubie(currentStickers, v.colorToFace);
-    const t0 = performance.now();
-    solutionMoves = solveCube(cs);
-    const dt = (performance.now() - t0).toFixed(1);
+    const facelets = FACE_ORDER.map(face =>
+      currentStickers[face].map(color => validation.colorToFace[color]).join('')
+    ).join('');
 
-    if (!solutionMoves) throw new Error('No solution found within depth 12');
+    const startedAt = performance.now();
+    bt.textContent = 'Solving in background...';
+    const result = await solveCube(facelets);
+    const elapsed = (performance.now() - startedAt).toFixed(1);
+    solutionMoves = result.moves;
 
-    const fs = applyMoves(cs, solutionMoves);
-    const solved = equalsCube(fs, SOLVED_STATE);
-
-    showOutput(solutionMoves, dt, solved);
-    setupVisualizer(cs, solutionMoves);
-    showToast('Solved in ' + solutionMoves.length + ' moves (' + dt + 'ms)', 'success');
-  } catch (e) {
-    showErr(e.message);
-    showToast(e.message, 'error');
+    showOutput(solutionMoves, elapsed, result.verified);
+    const faceToColor = Object.fromEntries(Object.entries(validation.colorToFace).map(([color, face]) => [face, color]));
+    setupVisualizer(result.snapshots[0], solutionMoves, result.snapshots.slice(1), faceToColor);
+    showToast('Verified solution: ' + solutionMoves.length + ' moves (' + elapsed + 'ms)', 'success');
+  } catch (error) {
+    showErr(error.message);
+    showToast(error.message, 'error');
   } finally {
     b.disabled = false;
-    bt.textContent = ot;
+    bt.textContent = originalText;
+    checkReady();
   }
 }
 
@@ -625,11 +664,11 @@ function showErr(msg) {
 function hideOutput() { document.getElementById('output-section').hidden = true; }
 function hideVisualizer() { document.getElementById('visualizer-section').hidden = true; }
 
-function setupVisualizer(initialState, moves) {
+function setupVisualizer(initialFacelets, moves, verifiedStates = [], faceToColor = { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' }) {
   document.getElementById('visualizer-section').hidden = false;
-  if (visualizerCube) visualizerCube.setState(initialState, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
+  if (visualizerCube) visualizerCube.setFacelets(initialFacelets, faceToColor);
 
-  animState = { state: initialState, moves, currentStep: 0, playing: false, timer: null };
+  animState = { faceToColor, states: verifiedStates, moves, currentStep: 0, playing: false, timer: null };
 
   document.getElementById('play-btn').onclick = playAnimation;
   document.getElementById('pause-btn').onclick = pauseAnimation;
@@ -661,9 +700,8 @@ function pauseAnimation() {
 
 function stepAnimation() {
   if (animState.currentStep >= animState.moves.length) return;
-  const mv = animState.moves[animState.currentStep];
-  animState.state = applyMove(animState.state, MOVE_TABLES[mv]);
-  if (visualizerCube) visualizerCube.setState(animState.state, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
+  const facelets = animState.states[animState.currentStep];
+  if (visualizerCube) visualizerCube.setFacelets(facelets, animState.faceToColor);
   animState.currentStep++;
   if (animState.currentStep >= animState.moves.length) pauseAnimation();
 }
@@ -753,9 +791,12 @@ function tttInit() {
   const cells = document.querySelectorAll('.ttt-cell');
   cells.forEach(c => { c.textContent = ''; c.disabled = false; c.classList.remove('x', 'o', 'winning'); c.onclick = () => tttHandleClick(parseInt(c.dataset.pos)); });
   tttState.board = Array(9).fill(''); tttState.currentPlayer = 'X'; tttState.gameOver = false; tttUpdateStatus('Your turn (X)');
-  document.getElementById('ttt-new')?.onclick = tttInit;
-  document.getElementById('ttt-swap')?.onclick = tttSwapSides;
-  document.getElementById('ttt-difficulty')?.onchange = e => { tttState.difficulty = e.target.value; tttInit(); };
+  const newGameButton = document.getElementById('ttt-new');
+  if (newGameButton) newGameButton.onclick = tttInit;
+  const swapButton = document.getElementById('ttt-swap');
+  if (swapButton) swapButton.onclick = tttSwapSides;
+  const difficultySelect = document.getElementById('ttt-difficulty');
+  if (difficultySelect) difficultySelect.onchange = e => { tttState.difficulty = e.target.value; tttInit(); };
 }
 
 function tttSwapSides() { [tttState.playerSymbol, tttState.aiSymbol] = [tttState.aiSymbol, tttState.playerSymbol]; tttInit(); }
@@ -797,10 +838,14 @@ function sudokuInit() {
     const cell = document.createElement('div'); cell.className = 'sudoku-cell'; cell.dataset.index = i; cell.textContent = sudokuState.board[i] || '';
     if (sudokuState.given[i]) cell.classList.add('given'); cell.onclick = () => sudokuSelectCell(i); grid.appendChild(cell);
   }
-  document.getElementById('sudoku-solve')?.onclick = sudokuSolve;
-  document.getElementById('sudoku-clear')?.onclick = sudokuClear;
-  document.getElementById('sudoku-new')?.onclick = sudokuNew;
-  document.getElementById('sudoku-validate')?.onclick = sudokuValidate;
+  const solveButton = document.getElementById('sudoku-solve');
+  if (solveButton) solveButton.onclick = sudokuSolve;
+  const clearButton = document.getElementById('sudoku-clear');
+  if (clearButton) clearButton.onclick = sudokuClear;
+  const newButton = document.getElementById('sudoku-new');
+  if (newButton) newButton.onclick = sudokuNew;
+  const validateButton = document.getElementById('sudoku-validate');
+  if (validateButton) validateButton.onclick = sudokuValidate;
   document.onkeydown = sudokuHandleKeydown;
 }
 
@@ -867,3 +912,113 @@ document.addEventListener('DOMContentLoaded', () => {
 window.app = { onStickerChange, solveSudoku };
 
 window.app = { onStickerChange, solveSudoku };
+
+// -----------------------------------------------------------------------------
+// CAMERA INPUT - Guided 3x3 face capture with manual correction
+// -----------------------------------------------------------------------------
+let cameraStream = null;
+
+function initCameraInput() {
+  const openButton = document.getElementById('camera-open');
+  const closeButton = document.getElementById('camera-close');
+  const captureButton = document.getElementById('camera-capture');
+  const panel = document.getElementById('camera-panel');
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  const faceSelect = document.getElementById('camera-face');
+  const status = document.getElementById('camera-status');
+
+  if (!openButton || !video || !canvas || !captureButton || !panel) return;
+
+  openButton.addEventListener('click', async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showToast('Camera access is unavailable in this browser.', 'error');
+      return;
+    }
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+      video.srcObject = cameraStream;
+      await video.play();
+      panel.hidden = false;
+      status.textContent = 'Camera ready. Select the face shown and capture it.';
+      openButton.hidden = true;
+    } catch (error) {
+      status.textContent = 'Camera permission was denied or no camera is available.';
+      showToast(status.textContent, 'error');
+    }
+  });
+
+  const closeCamera = () => {
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+    video.srcObject = null;
+    panel.hidden = true;
+    openButton.hidden = false;
+    status.textContent = 'Camera is off.';
+  };
+
+  closeButton?.addEventListener('click', closeCamera);
+  captureButton.addEventListener('click', () => {
+    if (!video.videoWidth || !video.videoHeight) {
+      status.textContent = 'Wait until the camera preview is ready.';
+      return;
+    }
+
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(video, 0, 0, width, height);
+
+    const palette = {
+      W: [254, 254, 254],
+      Y: [253, 224, 71],
+      R: [248, 113, 113],
+      O: [251, 146, 60],
+      G: [74, 222, 128],
+      B: [96, 165, 250]
+    };
+    const sampleColor = (x, y) => {
+      const radius = Math.max(2, Math.floor(Math.min(width, height) * 0.008));
+      const data = context.getImageData(
+        Math.max(0, Math.floor(x) - radius),
+        Math.max(0, Math.floor(y) - radius),
+        Math.min(radius * 2 + 1, width - Math.max(0, Math.floor(x) - radius)),
+        Math.min(radius * 2 + 1, height - Math.max(0, Math.floor(y) - radius))
+      ).data;
+      let red = 0, green = 0, blue = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        red += data[i]; green += data[i + 1]; blue += data[i + 2]; count++;
+      }
+      red /= count; green /= count; blue /= count;
+      let best = 'W', bestDistance = Infinity;
+      for (const [color, rgb] of Object.entries(palette)) {
+        const distance = (red-rgb[0])**2 + (green-rgb[1])**2 + (blue-rgb[2])**2;
+        if (distance < bestDistance) { bestDistance = distance; best = color; }
+      }
+      return best;
+    };
+
+    const captured = [];
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        captured.push(sampleColor((col + 0.5) * width / 3, (row + 0.5) * height / 3));
+      }
+    }
+
+    const face = faceSelect.value;
+    currentStickers[face] = captured;
+    if (inputCube) for (let i = 0; i < 9; i++) inputCube.setColor(face, i, captured[i]);
+    checkReady();
+    status.textContent = face + ' face captured. Select another face or correct stickers manually.';
+    showToast(face + ' face captured — please review the detected colors.');
+  });
+
+  window.addEventListener('pagehide', () => {
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+  });
+}

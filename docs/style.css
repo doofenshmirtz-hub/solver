@@ -1510,3 +1510,13 @@ footer a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Guided camera face capture */
+.camera-entry { margin-top: 14px; }
+.camera-panel { margin-top: 12px; padding: 16px; border: 1px solid var(--border); border-radius: 14px; background: rgba(15, 23, 42, .55); }
+.camera-panel[hidden] { display: none; }
+.camera-panel label { display: block; margin: 10px 0 6px; color: var(--text); font-size: .9rem; }
+.camera-face-select { width: 100%; padding: 10px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+#camera-video { display: block; width: 100%; max-height: 360px; margin-top: 12px; background: #05070d; border-radius: 12px; object-fit: cover; }
+.camera-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+@media (max-width: 520px) { .camera-actions .btn { flex: 1 1 100%; } }
