@@ -174,6 +174,21 @@ function idsSearch(state, depth, lastMove, path) {
 // -----------------------------------------------------------------------------
 
 function validateCenters(stickers) {
+  const counts = Object.fromEntries(COLORS.map(color => [color, 0]));
+  for (const face of FACE_ORDER) {
+    if (!Array.isArray(stickers[face]) || stickers[face].length !== 9) {
+      return { valid: false, error: 'Each cube face must contain exactly 9 stickers.' };
+    }
+    for (const color of stickers[face]) {
+      if (!(color in counts)) return { valid: false, error: 'Unknown sticker color detected.' };
+      counts[color]++;
+    }
+  }
+  const incorrectCount = Object.entries(counts).find(([, count]) => count !== 9);
+  if (incorrectCount) {
+    return { valid: false, error: 'A valid 3×3 cube must have exactly 9 stickers of each color. ' + incorrectCount[0] + ' currently has ' + incorrectCount[1] + '.' };
+  }
+
   const centers = {};
   for (const f of FACE_ORDER) centers[f] = stickers[f][4];
   if (new Set(Object.values(centers)).size !== 6) return { valid: false, error: 'Center colors must be 6 distinct colors' };
