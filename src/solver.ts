@@ -434,6 +434,7 @@ export function solveCube(state: CubeState): Move[] {
   if (!isInG1Subgroup(phase1State)) {
     throw new Error('Internal solver error: Phase 1 result is not in the G1 subgroup.');
   }
+  if (verifySolution(state, phase1Moves)) return phase1Moves;
 
   throw new Error(
     'The TypeScript solver is not yet a complete 3×3 solver: Phase 2 is not implemented. ' +
