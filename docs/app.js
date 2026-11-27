@@ -132,13 +132,25 @@ function cloneState(s) {
 // Phase 1: Solve to G1 subgroup (edges oriented, corners oriented, E-slice in place)
 // Coordinates: corner orientation (3^7=2187), edge orientation (2^11=2048), E-slice (495)
 
-function solveCube(state) {
-  // Phase 1: Iterative deepening IDA* to reach G1 subgroup
-  for (let d = 0; d <= 12; d++) {
-    const result = idsSearch(state, d, -1, []);
-    if (result) return result;
-  }
-  return null;
+function solveCube(facelets) {
+  return new Promise((resolve, reject) => {
+    if (typeof Worker === 'undefined') {
+      reject(new Error('This browser does not support background cube solving.'));
+      return;
+    }
+
+    const worker = new Worker('cube-solver-worker.js', { type: 'module' });
+    worker.onmessage = (event) => {
+      worker.terminate();
+      if (event.data && event.data.ok && event.data.verified) resolve(event.data);
+      else reject(new Error(event.data?.error || 'The cube solver failed to verify its result.'));
+    };
+    worker.onerror = (event) => {
+      worker.terminate();
+      reject(new Error('Could not load the cube-solving engine. Check your internet connection and reload the page.'));
+    };
+    worker.postMessage({ facelets });
+  });
 }
 
 function idsSearch(state, depth, lastMove, path) {
@@ -557,38 +569,39 @@ function checkReady() {
   }
 }
 
-function solve() {
+async function solve() {
   const b = document.getElementById('solve-btn');
   const bt = b.querySelector('.btn-text');
-  const ot = bt.textContent;
+  const originalText = bt.textContent;
   b.disabled = true;
-  bt.textContent = 'Solving...';
+  bt.textContent = 'Preparing solver...';
   hideOutput();
   hideVisualizer();
 
   try {
-    const v = validateCenters(currentStickers);
-    if (!v.valid) throw new Error(v.error);
+    const validation = validateCenters(currentStickers);
+    if (!validation.valid) throw new Error(validation.error);
 
-    const cs = stickersToCubie(currentStickers, v.colorToFace);
-    const t0 = performance.now();
-    solutionMoves = solveCube(cs);
-    const dt = (performance.now() - t0).toFixed(1);
+    const facelets = FACE_ORDER.map(face =>
+      currentStickers[face].map(color => validation.colorToFace[color]).join('')
+    ).join('');
 
-    if (!solutionMoves) throw new Error('No solution found within depth 12');
+    const startedAt = performance.now();
+    bt.textContent = 'Solving in background...';
+    const result = await solveCube(facelets);
+    const elapsed = (performance.now() - startedAt).toFixed(1);
+    solutionMoves = result.moves;
 
-    const fs = applyMoves(cs, solutionMoves);
-    const solved = equalsCube(fs, SOLVED_STATE);
-
-    showOutput(solutionMoves, dt, solved);
-    setupVisualizer(cs, solutionMoves);
-    showToast('Solved in ' + solutionMoves.length + ' moves (' + dt + 'ms)', 'success');
-  } catch (e) {
-    showErr(e.message);
-    showToast(e.message, 'error');
+    showOutput(solutionMoves, elapsed, result.verified);
+    setupVisualizer(result.snapshots[0], solutionMoves, result.snapshots.slice(1));
+    showToast('Verified solution: ' + solutionMoves.length + ' moves (' + elapsed + 'ms)', 'success');
+  } catch (error) {
+    showErr(error.message);
+    showToast(error.message, 'error');
   } finally {
     b.disabled = false;
-    bt.textContent = ot;
+    bt.textContent = originalText;
+    checkReady();
   }
 }
 
@@ -625,11 +638,12 @@ function showErr(msg) {
 function hideOutput() { document.getElementById('output-section').hidden = true; }
 function hideVisualizer() { document.getElementById('visualizer-section').hidden = true; }
 
-function setupVisualizer(initialState, moves) {
+function setupVisualizer(initialState, moves, verifiedStates = []) {
   document.getElementById('visualizer-section').hidden = false;
-  if (visualizerCube) visualizerCube.setState(initialState, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
+  const colorMap = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
+  if (visualizerCube) visualizerCube.setState(initialState, colorMap);
 
-  animState = { state: initialState, moves, currentStep: 0, playing: false, timer: null };
+  animState = { state: initialState, states: verifiedStates, moves, currentStep: 0, playing: false, timer: null };
 
   document.getElementById('play-btn').onclick = playAnimation;
   document.getElementById('pause-btn').onclick = pauseAnimation;
@@ -661,8 +675,7 @@ function pauseAnimation() {
 
 function stepAnimation() {
   if (animState.currentStep >= animState.moves.length) return;
-  const mv = animState.moves[animState.currentStep];
-  animState.state = applyMove(animState.state, MOVE_TABLES[mv]);
+  animState.state = animState.states[animState.currentStep];
   if (visualizerCube) visualizerCube.setState(animState.state, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
   animState.currentStep++;
   if (animState.currentStep >= animState.moves.length) pauseAnimation();
