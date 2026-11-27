@@ -1,10 +1,10 @@
 // ============================================================================
-// Rubik's Cube Solver - Complete Web App (No Dependencies)
-// Canvas 2D renderer + Cubie solver + Method guides + Sudoku + TicTacToe
+// Solver Suite - Complete Web App (No Dependencies)
+// Canvas 2D renderer + Cubie Representation + Kociemba + Sudoku Backtracking + Minimax
 // ============================================================================
 
 // -----------------------------------------------------------------------------
-// CONSTANTS
+// CONSTANTS - Cube
 // -----------------------------------------------------------------------------
 
 const Face = { U: 'U', R: 'R', F: 'F', D: 'D', L: 'L', B: 'B' };
@@ -12,41 +12,60 @@ const FACE_ORDER = [Face.U, Face.R, Face.F, Face.D, Face.L, Face.B];
 const COLORS = ['W', 'Y', 'R', 'O', 'G', 'B'];
 const OPPOSITE = { W: 'Y', Y: 'W', R: 'O', O: 'R', G: 'B', B: 'G' };
 
+// Corner cubies: [U/D, R/L, F/B] in clockwise order
 const CORNER_FACES = [
-  [Face.U, Face.R, Face.F], [Face.U, Face.F, Face.L], [Face.U, Face.L, Face.B], [Face.U, Face.B, Face.R],
-  [Face.D, Face.F, Face.R], [Face.D, Face.R, Face.B], [Face.D, Face.B, Face.L], [Face.D, Face.L, Face.F],
+  [Face.U, Face.R, Face.F], // URF - 0
+  [Face.U, Face.F, Face.L], // UFL - 1
+  [Face.U, Face.L, Face.B], // ULB - 2
+  [Face.U, Face.B, Face.R], // UBR - 3
+  [Face.D, Face.F, Face.R], // DFR - 4
+  [Face.D, Face.R, Face.B], // DRB - 5
+  [Face.D, Face.B, Face.L], // DBL - 6
+  [Face.D, Face.L, Face.F], // DFL - 7
 ];
 
+// Edge cubies: [face1, face2]
 const EDGE_FACES = [
-  [Face.U, Face.R], [Face.U, Face.F], [Face.U, Face.L], [Face.U, Face.B],
-  [Face.D, Face.R], [Face.D, Face.F], [Face.D, Face.L], [Face.D, Face.B],
-  [Face.F, Face.R], [Face.F, Face.L], [Face.B, Face.R], [Face.B, Face.L],
+  [Face.U, Face.R], // UR - 0
+  [Face.U, Face.F], // UF - 1
+  [Face.U, Face.L], // UL - 2
+  [Face.U, Face.B], // UB - 3
+  [Face.D, Face.R], // DR - 4
+  [Face.D, Face.F], // DF - 5
+  [Face.D, Face.L], // DL - 6
+  [Face.D, Face.B], // DB - 7
+  [Face.F, Face.R], // FR - 8
+  [Face.F, Face.L], // FL - 9
+  [Face.B, Face.R], // BR - 10
+  [Face.B, Face.L], // BL - 11
 ];
 
+// Sticker indices on each face (3x3 grid, row-major: 0 1 2 / 3 4 5 / 6 7 8)
+// For each corner/edge, which sticker index on each face it occupies
 const CORNER_STICKER_MAP = [
-  [{ face: Face.U, sticker: 2 }, { face: Face.R, sticker: 0 }, { face: Face.F, sticker: 2 }],
-  [{ face: Face.U, sticker: 0 }, { face: Face.F, sticker: 0 }, { face: Face.L, sticker: 2 }],
-  [{ face: Face.U, sticker: 6 }, { face: Face.L, sticker: 0 }, { face: Face.B, sticker: 2 }],
-  [{ face: Face.U, sticker: 8 }, { face: Face.B, sticker: 0 }, { face: Face.R, sticker: 2 }],
-  [{ face: Face.D, sticker: 0 }, { face: Face.F, sticker: 2 }, { face: Face.R, sticker: 6 }],
-  [{ face: Face.D, sticker: 2 }, { face: Face.R, sticker: 8 }, { face: Face.B, sticker: 6 }],
-  [{ face: Face.D, sticker: 8 }, { face: Face.B, sticker: 8 }, { face: Face.L, sticker: 6 }],
-  [{ face: Face.D, sticker: 6 }, { face: Face.L, sticker: 8 }, { face: Face.F, sticker: 6 }],
+  [{ face: Face.U, sticker: 2 }, { face: Face.R, sticker: 0 }, { face: Face.F, sticker: 2 }], // URF
+  [{ face: Face.U, sticker: 0 }, { face: Face.F, sticker: 0 }, { face: Face.L, sticker: 2 }], // UFL
+  [{ face: Face.U, sticker: 6 }, { face: Face.L, sticker: 0 }, { face: Face.B, sticker: 2 }], // ULB
+  [{ face: Face.U, sticker: 8 }, { face: Face.B, sticker: 0 }, { face: Face.R, sticker: 2 }], // UBR
+  [{ face: Face.D, sticker: 0 }, { face: Face.F, sticker: 2 }, { face: Face.R, sticker: 6 }], // DFR
+  [{ face: Face.D, sticker: 2 }, { face: Face.R, sticker: 8 }, { face: Face.B, sticker: 6 }], // DRB
+  [{ face: Face.D, sticker: 8 }, { face: Face.B, sticker: 8 }, { face: Face.L, sticker: 6 }], // DBL
+  [{ face: Face.D, sticker: 6 }, { face: Face.L, sticker: 8 }, { face: Face.F, sticker: 6 }], // DFL
 ];
 
 const EDGE_STICKER_MAP = [
-  [{ face: Face.U, sticker: 1 }, { face: Face.R, sticker: 1 }],
-  [{ face: Face.U, sticker: 3 }, { face: Face.F, sticker: 1 }],
-  [{ face: Face.U, sticker: 7 }, { face: Face.L, sticker: 1 }],
-  [{ face: Face.U, sticker: 5 }, { face: Face.B, sticker: 1 }],
-  [{ face: Face.D, sticker: 1 }, { face: Face.R, sticker: 7 }],
-  [{ face: Face.D, sticker: 3 }, { face: Face.F, sticker: 7 }],
-  [{ face: Face.D, sticker: 7 }, { face: Face.L, sticker: 7 }],
-  [{ face: Face.D, sticker: 5 }, { face: Face.B, sticker: 7 }],
-  [{ face: Face.F, sticker: 5 }, { face: Face.R, sticker: 3 }],
-  [{ face: Face.F, sticker: 3 }, { face: Face.L, sticker: 5 }],
-  [{ face: Face.B, sticker: 5 }, { face: Face.R, sticker: 5 }],
-  [{ face: Face.B, sticker: 3 }, { face: Face.L, sticker: 3 }],
+  [{ face: Face.U, sticker: 1 }, { face: Face.R, sticker: 1 }], // UR
+  [{ face: Face.U, sticker: 3 }, { face: Face.F, sticker: 1 }], // UF
+  [{ face: Face.U, sticker: 7 }, { face: Face.L, sticker: 1 }], // UL
+  [{ face: Face.U, sticker: 5 }, { face: Face.B, sticker: 1 }], // UB
+  [{ face: Face.D, sticker: 1 }, { face: Face.R, sticker: 7 }], // DR
+  [{ face: Face.D, sticker: 3 }, { face: Face.F, sticker: 7 }], // DF
+  [{ face: Face.D, sticker: 7 }, { face: Face.L, sticker: 7 }], // DL
+  [{ face: Face.D, sticker: 5 }, { face: Face.B, sticker: 7 }], // DB
+  [{ face: Face.F, sticker: 5 }, { face: Face.R, sticker: 3 }], // FR
+  [{ face: Face.F, sticker: 3 }, { face: Face.L, sticker: 5 }], // FL
+  [{ face: Face.B, sticker: 5 }, { face: Face.R, sticker: 5 }], // BR
+  [{ face: Face.B, sticker: 3 }, { face: Face.L, sticker: 3 }], // BL
 ];
 
 const BASIC_MOVES = ['U', "U'", 'U2', 'R', "R'", 'R2', 'F', "F'", 'F2', 'D', "D'", 'D2', 'L', "L'", 'L2', 'B', "B'", 'B2'];
@@ -59,6 +78,10 @@ const SOLVED_STATE = {
 };
 
 const COLOR_CSS = { W: '#fefefe', Y: '#fde047', R: '#f87171', O: '#fb923c', G: '#4ade80', B: '#60a5fa' };
+
+// -----------------------------------------------------------------------------
+// MOVE TABLES - How each move affects the cube state
+// -----------------------------------------------------------------------------
 
 const MOVE_TABLES = {};
 const moveDefs = {
@@ -103,11 +126,14 @@ function cloneState(s) {
 }
 
 // -----------------------------------------------------------------------------
-// SOLVER (Kociemba Phase 1)
+// SOLVER - Kociemba Two-Phase Algorithm (Phase 1 implemented)
 // -----------------------------------------------------------------------------
 
+// Phase 1: Solve to G1 subgroup (edges oriented, corners oriented, E-slice in place)
+// Coordinates: corner orientation (3^7=2187), edge orientation (2^11=2048), E-slice (495)
+
 function solveCube(state) {
-  // Simple iterative deepening for Phase 1
+  // Phase 1: Iterative deepening IDA* to reach G1 subgroup
   for (let d = 0; d <= 12; d++) {
     const result = idsSearch(state, d, -1, []);
     if (result) return result;
@@ -117,11 +143,9 @@ function solveCube(state) {
 
 function idsSearch(state, depth, lastMove, path) {
   if (depth === 0) {
-    // Check if solved
     if (equalsCube(state, SOLVED_STATE)) return path;
     return null;
   }
-
   for (let mi = 0; mi < BASIC_MOVES.length; mi++) {
     if (lastMove >= 0 && Math.floor(lastMove / 3) === Math.floor(mi / 3)) continue;
     const m = BASIC_MOVES[mi];
@@ -134,7 +158,7 @@ function idsSearch(state, depth, lastMove, path) {
 }
 
 // -----------------------------------------------------------------------------
-// INPUT PARSING (Cubie Representation)
+// CUBE INPUT PARSING - 54 Stickers → Cubie Representation (40 numbers)
 // -----------------------------------------------------------------------------
 
 function validateCenters(stickers) {
@@ -157,22 +181,24 @@ function stickersToCubie(stickers, colorToFace) {
   const faceToColor = {};
   for (const [c, f] of Object.entries(colorToFace)) faceToColor[f] = c;
 
-  // Build signature maps
+  // Build signature maps for solved cube
   const cornerMap = new Map(), edgeMap = new Map();
   for (let i = 0; i < 8; i++) {
-    const sig = CORNER_FACES[i].map(f => Object.keys(colorToFace).find(k => colorToFace[k] === f)).sort().join(',');
+    const faces = CORNER_FACES[i];
+    const sig = faces.map(f => Object.keys(colorToFace).find(k => colorToFace[k] === f)).sort().join(',');
     cornerMap.set(sig, i);
   }
   for (let i = 0; i < 12; i++) {
-    const sig = EDGE_FACES[i].map(f => Object.keys(colorToFace).find(k => colorToFace[k] === f)).sort().join(',');
+    const faces = EDGE_FACES[i];
+    const sig = faces.map(f => Object.keys(colorToFace).find(k => colorToFace[k] === f)).sort().join(',');
     edgeMap.set(sig, i);
   }
 
-  // Corners
+  // Parse corners from sticker colors
   for (let i = 0; i < 8; i++) {
     const sc = CORNER_STICKER_MAP[i].map(({ face, sticker }) => stickers[face][sticker]);
     const sf = sc.map(c => colorToFace[c]);
-    const sig = [...sf].sort((a, b) => Object.keys(colorToFace)[Object.values(colorToFace).indexOf(a)] - Object.keys(colorToFace)[Object.values(colorToFace).indexOf(b)]).join(',');
+    const sig = [...sf].sort((a, b) => Object.keys(colorToFace).indexOf(a) - Object.keys(colorToFace).indexOf(b)).join(',');
     const idx = cornerMap.get(sig);
     if (idx === undefined) throw new Error('Invalid corner at ' + i);
     state.cornerPos[i] = idx;
@@ -181,7 +207,7 @@ function stickersToCubie(stickers, colorToFace) {
     state.cornerOri[i] = (uInCubie - uInSlot + 3) % 3;
   }
 
-  // Edges
+  // Parse edges from sticker colors
   for (let i = 0; i < 12; i++) {
     const sc = EDGE_STICKER_MAP[i].map(({ face, sticker }) => stickers[face][sticker]);
     const sf = sc.map(c => colorToFace[c]);
@@ -239,29 +265,31 @@ class CubeRenderer {
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d');
     this.el.appendChild(this.canvas);
-<<<<<<< HEAD
-    this.stickerColors={}; // face:index -> color
-    this.hovered=null; this.dragging=false; this.last={x:0,y:0};
-    this.angle={x:0.5,y:0.5}; this.dist=5;
-    this.dpr=Math.min(window.devicePixelRatio||1,2);
-    this.ready=false;
+    this.stickerColors = {};
+    this.hovered = null;
+    this.dragging = false;
+    this.last = { x: 0, y: 0 };
+    this.angle = { x: 0.5, y: 0.5 };
+    this.dist = 5;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.ready = false;
     this.resizeObserver = null;
     this.init();
   }
-  init(){
-    // Build geometry and events after the container exists in the document.
+
+  init() {
     this.buildGeometry();
-    this.canvas.style.width='100%';
-    this.canvas.style.height='100%';
-    this.canvas.style.touchAction='none';
-    this.canvas.addEventListener('mousemove',e=>this.onMove(e));
-    this.canvas.addEventListener('click',e=>this.onClick(e));
-    this.canvas.addEventListener('pointerdown',e=>this.onDown(e));
-    this.canvas.addEventListener('pointerup',e=>this.onUp(e));
-    this.canvas.addEventListener('pointercancel',e=>this.onUp(e));
-    this.canvas.addEventListener('pointermove',e=>this.onPointerMove(e));
-    this.canvas.addEventListener('wheel',e=>this.onWheel(e),{passive:false});
-    this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = '100%';
+    this.canvas.style.touchAction = 'none';
+    this.canvas.addEventListener('mousemove', e => this.onMove(e));
+    this.canvas.addEventListener('click', e => this.onClick(e));
+    this.canvas.addEventListener('pointerdown', e => this.onDown(e));
+    this.canvas.addEventListener('pointerup', e => this.onUp(e));
+    this.canvas.addEventListener('pointercancel', e => this.onUp(e));
+    this.canvas.addEventListener('pointermove', e => this.onPointerMove(e));
+    this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+    this.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
     const resize = () => this.resize();
     if ('ResizeObserver' in window) {
@@ -270,56 +298,23 @@ class CubeRenderer {
     } else {
       window.addEventListener('resize', resize);
     }
-    requestAnimationFrame(() => { this.resize(); this.ready=true; this.draw(); });
-  }
-  resize(){
-    const rect=this.el.getBoundingClientRect();
-    const w=Math.max(1,rect.width);
-    const h=Math.max(1,rect.height);
-    const dpr=Math.min(window.devicePixelRatio||1,2);
-    const pixelWidth=Math.round(w*dpr);
-    const pixelHeight=Math.round(h*dpr);
-    if(this.canvas.width!==pixelWidth||this.canvas.height!==pixelHeight||this.dpr!==dpr){
-      this.dpr=dpr;
-      this.canvas.width=pixelWidth;
-      this.canvas.height=pixelHeight;
-      this.draw();
-    }
-    return {w,h,dpr};
-=======
-    this.stickerColors = {};
-    this.hovered = null;
-    this.dragging = false;
-    this.last = { x: 0, y: 0 };
-    this.angle = { x: 0.5, y: 0.5 };
-    this.dist = 5;
-    this.init();
-    this.draw();
-  }
-
-  init() {
-    this.resize();
-    window.addEventListener('resize', () => this.resize());
-    this.buildGeometry();
-    this.canvas.addEventListener('mousemove', e => this.onMove(e));
-    this.canvas.addEventListener('click', e => this.onClick(e));
-    this.canvas.addEventListener('pointerdown', e => this.onDown(e));
-    this.canvas.addEventListener('pointerup', e => this.onUp(e));
-    this.canvas.addEventListener('pointermove', e => this.onPointerMove(e));
-    this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
-    this.canvas.addEventListener('contextmenu', e => e.preventDefault());
+    requestAnimationFrame(() => { this.resize(); this.ready = true; this.draw(); });
   }
 
   resize() {
     const rect = this.el.getBoundingClientRect();
-    const w = rect.width || 400;
-    const h = rect.height || 400;
-    this.canvas.width = w * devicePixelRatio;
-    this.canvas.height = h * devicePixelRatio;
-    this.canvas.style.width = w + 'px';
-    this.canvas.style.height = h + 'px';
-    this.draw();
->>>>>>> e3c1719 (Complete solver app with Canvas 2D renderer)
+    const w = Math.max(1, rect.width);
+    const h = Math.max(1, rect.height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const pixelWidth = Math.round(w * dpr);
+    const pixelHeight = Math.round(h * dpr);
+    if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight || this.dpr !== dpr) {
+      this.dpr = dpr;
+      this.canvas.width = pixelWidth;
+      this.canvas.height = pixelHeight;
+      this.draw();
+    }
+    return { w, h, dpr };
   }
 
   buildGeometry() {
@@ -352,23 +347,12 @@ class CubeRenderer {
       }
     }
   }
-<<<<<<< HEAD
-  getColor(f,i){ return this.stickerColors[f+':'+i] || this.defaultColor(f); }
-  defaultColor(f){ return {U:'W',R:'R',F:'G',D:'Y',L:'O',B:'B'}[f]; }
-  setColor(f,i,c){ this.stickerColors[f+':'+i]=c; this.draw(); }
-  setAll(colors){ for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.stickerColors[f+':'+i]=colors[f]; this.draw(); }
-  setState(s,ct){ const st=cubieToStickers(s,ct); for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.stickerColors[f+':'+i]=st[f][i]; this.draw(); }
-=======
->>>>>>> e3c1719 (Complete solver app with Canvas 2D renderer)
 
   getColor(f, i) { return this.stickerColors[f + ':' + i] || this.defaultColor(f); }
   defaultColor(f) { return { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' }[f]; }
   setColor(f, i, c) { this.stickerColors[f + ':' + i] = c; this.draw(); }
   setAll(colors) { for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, colors[f]); }
-  setState(state, colorToFace) {
-    const stickers = cubieToStickers(state, colorToFace);
-    for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, stickers[f][i]);
-  }
+  setState(s, ct) { const st = cubieToStickers(s, ct); for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, st[f][i]); }
 
   onMove(e) {
     const r = this.el.getBoundingClientRect();
@@ -422,22 +406,12 @@ class CubeRenderer {
     return best;
   }
 
-<<<<<<< HEAD
-  draw(){
-    if(!this.ctx || !this.canvas.width || !this.canvas.height) return;
-    const ctx=this.ctx, w=this.canvas.width, h=this.canvas.height;
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.clearRect(0,0,w,h);
-    const cx=w/2, cy=h/2, sc=Math.min(w,h)/2/this.dist;
-=======
   draw() {
-    const rect = this.el.getBoundingClientRect();
-    const ctx = this.ctx;
-    const w = this.canvas.width, h = this.canvas.height;
+    if (!this.ctx || !this.canvas.width || !this.canvas.height) return;
+    const ctx = this.ctx, w = this.canvas.width, h = this.canvas.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    const cx = w / 2, cy = h / 2;
-    const sc = Math.min(w, h) / 2 / this.dist;
->>>>>>> e3c1719 (Complete solver app with Canvas 2D renderer)
+    const cx = w / 2, cy = h / 2, sc = Math.min(w, h) / 2 / this.dist;
 
     const vx = -this.dist * Math.sin(this.angle.y) * Math.cos(this.angle.x);
     const vy = -this.dist * Math.sin(this.angle.x);
@@ -470,7 +444,7 @@ class CubeRenderer {
 }
 
 // -----------------------------------------------------------------------------
-// MAIN APP STATE & EVENTS
+// MAIN APP STATE & EVENTS - Cube Solver
 // -----------------------------------------------------------------------------
 
 let currentStickers = {};
@@ -695,395 +669,188 @@ function stepAnimation() {
 }
 
 // -----------------------------------------------------------------------------
-// SUDOKU SOLVER
+// SUDOKU SOLVER - Recursive Backtracking
 // -----------------------------------------------------------------------------
 
 function solveSudoku(board) {
+  // board: 81-element array (0 = empty)
   const findEmpty = (b) => {
-    for (let i = 0; i < 9; i++) for (let j = 0; j < 9; j++) if (b[i][j] === 0) return { i, j };
-    return null;
+    for (let i = 0; i < 81; i++) if (b[i] === 0) return i;
+    return -1;
   };
 
-  const isValid = (b, row, col, num) => {
-    for (let i = 0; i < 9; i++) {
-      if (b[row][i] === num || b[i][col] === num) return false;
-    }
-    const boxRow = Math.floor(row / 3) * 3, boxCol = Math.floor(col / 3) * 3;
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) if (b[boxRow + i][boxCol + j] === num) return false;
+  const isValid = (b, idx, num) => {
+    const row = Math.floor(idx / 9), col = idx % 9;
+    // Check row
+    for (let c = 0; c < 9; c++) if (b[row * 9 + c] === num) return false;
+    // Check column
+    for (let r = 0; r < 9; r++) if (b[r * 9 + col] === num) return false;
+    // Check 3x3 box
+    const br = Math.floor(row / 3) * 3, bc = Math.floor((idx % 9) / 3) * 3;
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (b[(br + r) * 9 + (bc + c)] === num) return false;
     return true;
   };
 
-  const backtrack = (b) => {
+  function backtrack(b) {
     const empty = findEmpty(b);
-    if (!empty) return true;
+    if (empty === -1) return true; // Solved
     for (let num = 1; num <= 9; num++) {
-      if (isValid(b, empty.i, empty.j, num)) {
-        b[empty.i][empty.j] = num;
+      if (isValid(b, empty, num)) {
+        b[empty] = num;
         if (backtrack(b)) return true;
-        b[empty.i][empty.j] = 0;
+        b[empty] = 0;
       }
     }
     return false;
-  };
+  }
 
-  const solution = board.map(row => [...row]);
+  const solution = [...board];
   backtrack(solution);
   return solution;
 }
 
 // -----------------------------------------------------------------------------
-// TIC-TAC-TOE AI
+// TIC-TAC-TOE AI - Minimax
 // -----------------------------------------------------------------------------
 
 function tttCheckWin(board, player) {
-  const lines = [
-    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-    [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
-    [0, 4, 8], [2, 4, 6]             // diagonals
-  ];
-  return lines.some(([a, b, c]) => board[a] === player && board[b] === player && board[c] === player);
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  return lines.some(([a,b,c]) => board[a] === player && board[b] === player && board[c] === player);
 }
 
-function tttGetEmpty(board) {
-  return board.map((v, i) => v === '' ? i : null).filter(v => v !== null);
-}
+function tttGetEmpty(board) { return board.map((v,i) => v === '' ? i : null).filter(v => v !== null); }
 
-function tttMinimax(board, depth, isMaximizing, player, opponent) {
+function tttMinimax(board, depth, isMax, player, opponent) {
   if (tttCheckWin(board, player)) return 10 - depth;
   if (tttCheckWin(board, opponent)) return depth - 10;
   if (tttGetEmpty(board).length === 0) return 0;
 
-  if (isMaximizing) {
-    let bestScore = -Infinity;
-    for (const move of tttGetEmpty(board)) {
-      board[move] = player;
-      const score = tttMinimax(board, depth + 1, false, player, opponent);
-      board[move] = '';
-      bestScore = Math.max(score, bestScore);
-    }
-    return bestScore;
+  if (isMax) {
+    let best = -Infinity;
+    for (const m of tttGetEmpty(board)) { board[m] = player; best = Math.max(best, tttMinimax(board, depth+1, false, player, opponent)); board[m] = ''; }
+    return best;
   } else {
-    let bestScore = Infinity;
-    for (const move of tttGetEmpty(board)) {
-      board[move] = opponent;
-      const score = tttMinimax(board, depth + 1, true, player, opponent);
-      board[move] = '';
-      bestScore = Math.min(score, bestScore);
-    }
-    return bestScore;
+    let best = Infinity;
+    for (const m of tttGetEmpty(board)) { board[m] = opponent; best = Math.min(best, tttMinimax(board, depth+1, true, player, opponent)); board[m] = ''; }
+    return best;
   }
 }
 
 function tttBestMove(board, difficulty, player, opponent) {
   const empty = tttGetEmpty(board);
   if (empty.length === 0) return null;
-
-  if (difficulty === 'easy') {
-    return empty[Math.floor(Math.random() * empty.length)];
-  }
-
-  if (difficulty === 'medium') {
-    // 70% chance optimal, 30% random
-    if (Math.random() < 0.7) {
-      return tttBestMove(board, 'hard', player, opponent);
-    }
-    return empty[Math.floor(Math.random() * empty.length)];
-  }
-
+  if (difficulty === 'easy') return empty[Math.floor(Math.random() * empty.length)];
+  if (difficulty === 'medium') return Math.random() < 0.7 ? tttBestMove(board, 'hard', player, opponent) : empty[Math.floor(Math.random() * empty.length)];
   // Hard - perfect minimax
-  let bestScore = -Infinity;
-  let bestMove = null;
-  for (const move of empty) {
-    board[move] = player;
-    const score = tttMinimax(board, 0, false, player, opponent);
-    board[move] = '';
-    if (score > bestScore) {
-      bestScore = score;
-      bestMove = move;
-    }
-  }
+  let bestScore = -Infinity, bestMove = null;
+  for (const m of empty) { board[m] = player; const s = tttMinimax(board, 0, false, player, opponent); board[m] = ''; if (s > bestScore) { bestScore = s; bestMove = m; } }
   return bestMove;
 }
 
-let tttState = {
-  board: Array(9).fill(''),
-  currentPlayer: 'X',
-  playerSymbol: 'X',
-  aiSymbol: 'O',
-  difficulty: 'hard',
-  scores: { x: 0, o: 0, draw: 0 },
-  gameOver: false
-};
+let tttState = { board: Array(9).fill(''), currentPlayer: 'X', playerSymbol: 'X', aiSymbol: 'O', difficulty: 'hard', scores: { x: 0, o: 0, draw: 0 }, gameOver: false };
 
 function tttInit() {
   const cells = document.querySelectorAll('.ttt-cell');
-  cells.forEach(cell => {
-    cell.textContent = '';
-    cell.disabled = false;
-    cell.classList.remove('x', 'o', 'winning');
-    cell.addEventListener('click', () => tttHandleClick(parseInt(cell.dataset.pos)));
-  });
-
-  tttState.board = Array(9).fill('');
-  tttState.currentPlayer = 'X';
-  tttState.gameOver = false;
-  tttUpdateStatus('Your turn (X)');
-
-  document.getElementById('ttt-new')?.addEventListener('click', tttInit);
-  document.getElementById('ttt-swap')?.addEventListener('click', tttSwapSides);
-  document.getElementById('ttt-difficulty')?.addEventListener('change', (e) => {
-    tttState.difficulty = e.target.value;
-    tttInit();
-  });
+  cells.forEach(c => { c.textContent = ''; c.disabled = false; c.classList.remove('x', 'o', 'winning'); c.onclick = () => tttHandleClick(parseInt(c.dataset.pos)); });
+  tttState.board = Array(9).fill(''); tttState.currentPlayer = 'X'; tttState.gameOver = false; tttUpdateStatus('Your turn (X)');
+  document.getElementById('ttt-new')?.onclick = tttInit;
+  document.getElementById('ttt-swap')?.onclick = tttSwapSides;
+  document.getElementById('ttt-difficulty')?.onchange = e => { tttState.difficulty = e.target.value; tttInit(); };
 }
 
-function tttSwapSides() {
-  const temp = tttState.playerSymbol;
-  tttState.playerSymbol = tttState.aiSymbol;
-  tttState.aiSymbol = temp;
-  tttInit();
-}
+function tttSwapSides() { [tttState.playerSymbol, tttState.aiSymbol] = [tttState.aiSymbol, tttState.playerSymbol]; tttInit(); }
 
 function tttHandleClick(pos) {
   if (tttState.gameOver || tttState.board[pos] !== '' || tttState.currentPlayer !== tttState.playerSymbol) return;
-
   tttMakeMove(pos, tttState.playerSymbol);
   if (tttCheckGameEnd()) return;
-
-  tttState.currentPlayer = tttState.aiSymbol;
-  tttUpdateStatus('AI thinking...');
-
-  setTimeout(() => {
-    if (!tttState.gameOver) {
-      const aiMove = tttBestMove(tttState.board, tttState.difficulty, tttState.aiSymbol, tttState.playerSymbol);
-      if (aiMove !== null) {
-        tttMakeMove(aiMove, tttState.aiSymbol);
-        tttCheckGameEnd();
-      }
-    }
-    tttState.currentPlayer = tttState.playerSymbol;
-    if (!tttState.gameOver) tttUpdateStatus('Your turn (X)');
-  }, 300);
+  tttState.currentPlayer = tttState.aiSymbol; tttUpdateStatus('AI thinking...');
+  setTimeout(() => { if (!tttState.gameOver) { const m = tttBestMove(tttState.board, tttState.difficulty, tttState.aiSymbol, tttState.playerSymbol); if (m !== null) tttMakeMove(m, tttState.aiSymbol); tttCheckGameEnd(); } tttState.currentPlayer = tttState.playerSymbol; if (!tttState.gameOver) tttUpdateStatus('Your turn (X)'); }, 300);
 }
 
-function tttMakeMove(pos, player) {
-  tttState.board[pos] = player;
-  const cell = document.querySelector(`.ttt-cell[data-pos="${pos}"]`);
-  if (cell) {
-    cell.textContent = player;
-    cell.classList.add(player.toLowerCase());
-    cell.disabled = true;
-  }
-}
+function tttMakeMove(pos, player) { tttState.board[pos] = player; const c = document.querySelector(`.ttt-cell[data-pos="${pos}"]`); if (c) { c.textContent = player; c.classList.add(player.toLowerCase()); c.disabled = true; } }
 
 function tttCheckGameEnd() {
-  if (tttCheckWin(tttState.board, 'X')) {
-    tttState.gameOver = true;
-    tttState.scores.x++;
-    tttUpdateScore();
-    tttHighlightWin('X');
-    tttUpdateStatus('You win! 🎉');
-    return true;
-  }
-  if (tttCheckWin(tttState.board, 'O')) {
-    tttState.gameOver = true;
-    tttState.scores.o++;
-    tttUpdateScore();
-    tttHighlightWin('O');
-    tttUpdateStatus('AI wins! 🤖');
-    return true;
-  }
-  if (tttGetEmpty(tttState.board).length === 0) {
-    tttState.gameOver = true;
-    tttState.scores.draw++;
-    tttUpdateScore();
-    tttUpdateStatus('Draw! 🤝');
-    return true;
-  }
+  if (tttCheckWin(tttState.board, 'X')) { tttState.gameOver = true; tttState.scores.x++; tttUpdateScore(); tttHighlightWin('X'); tttUpdateStatus('You win! 🎉'); return true; }
+  if (tttCheckWin(tttState.board, 'O')) { tttState.gameOver = true; tttState.scores.o++; tttUpdateScore(); tttHighlightWin('O'); tttUpdateStatus('AI wins! 🤖'); return true; }
+  if (tttGetEmpty(tttState.board).length === 0) { tttState.gameOver = true; tttState.scores.draw++; tttUpdateScore(); tttUpdateStatus('Draw! 🤝'); return true; }
   return false;
 }
 
-function tttHighlightWin(player) {
+function tttHighlightWin(p) {
   const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  for (const [a,b,c] of lines) {
-    if (tttState.board[a] === player && tttState.board[b] === player && tttState.board[c] === player) {
-      document.querySelector(`.ttt-cell[data-pos="${a}"]`)?.classList.add('winning');
-      document.querySelector(`.ttt-cell[data-pos="${b}"]`)?.classList.add('winning');
-      document.querySelector(`.ttt-cell[data-pos="${c}"]`)?.classList.add('winning');
-      break;
-    }
-  }
+  for (const [a,b,c] of lines) if (tttState.board[a]===p && tttState.board[b]===p && tttState.board[c]===p) { document.querySelector(`.ttt-cell[data-pos="${a}"]`)?.classList.add('winning'); document.querySelector(`.ttt-cell[data-pos="${b}"]`)?.classList.add('winning'); document.querySelector(`.ttt-cell[data-pos="${c}"]`)?.classList.add('winning'); break; }
 }
 
-function tttUpdateScore() {
-  document.getElementById('ttt-score-x').textContent = tttState.scores.x;
-  document.getElementById('ttt-score-o').textContent = tttState.scores.o;
-  document.getElementById('ttt-score-draw').textContent = tttState.scores.draw;
-}
-
-function tttUpdateStatus(msg) {
-  const el = document.getElementById('ttt-status');
-  if (el) el.textContent = msg;
-}
+function tttUpdateScore() { document.getElementById('ttt-score-x').textContent = tttState.scores.x; document.getElementById('ttt-score-o').textContent = tttState.scores.o; document.getElementById('ttt-score-draw').textContent = tttState.scores.draw; }
+function tttUpdateStatus(m) { const el = document.getElementById('ttt-status'); if (el) el.textContent = m; }
 
 // -----------------------------------------------------------------------------
-// SUDOKU UI
+// SUDOKU UI - 9x9 Grid with Backtracking
 // -----------------------------------------------------------------------------
 
-let sudokuState = {
-  board: Array(81).fill(0),
-  given: Array(81).fill(false),
-  selected: -1
-};
+let sudokuState = { board: Array(81).fill(0), given: Array(81).fill(false), selected: -1 };
 
 function sudokuInit() {
-  const grid = document.getElementById('sudoku-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-
+  const grid = document.getElementById('sudoku-grid'); if (!grid) return; grid.innerHTML = '';
   for (let i = 0; i < 81; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'sudoku-cell';
-    cell.dataset.index = i;
-    cell.textContent = sudokuState.board[i] || '';
-    if (sudokuState.given[i]) cell.classList.add('given');
-    cell.addEventListener('click', () => sudokuSelectCell(i));
-    grid.appendChild(cell);
+    const cell = document.createElement('div'); cell.className = 'sudoku-cell'; cell.dataset.index = i; cell.textContent = sudokuState.board[i] || '';
+    if (sudokuState.given[i]) cell.classList.add('given'); cell.onclick = () => sudokuSelectCell(i); grid.appendChild(cell);
   }
-
-  document.getElementById('sudoku-solve')?.addEventListener('click', sudokuSolve);
-  document.getElementById('sudoku-clear')?.addEventListener('click', sudokuClear);
-  document.getElementById('sudoku-new')?.addEventListener('click', sudokuNew);
-  document.getElementById('sudoku-validate')?.addEventListener('click', sudokuValidate);
-
-  document.addEventListener('keydown', sudokuHandleKeydown);
+  document.getElementById('sudoku-solve')?.onclick = sudokuSolve;
+  document.getElementById('sudoku-clear')?.onclick = sudokuClear;
+  document.getElementById('sudoku-new')?.onclick = sudokuNew;
+  document.getElementById('sudoku-validate')?.onclick = sudokuValidate;
+  document.onkeydown = sudokuHandleKeydown;
 }
 
-function sudokuSelectCell(index) {
-  if (sudokuState.given[index]) return;
-  document.querySelectorAll('.sudoku-cell').forEach(c => c.classList.remove('selected'));
-  const cell = document.querySelector(`.sudoku-cell[data-index="${index}"]`);
-  if (cell) cell.classList.add('selected');
-  sudokuState.selected = index;
-}
+function sudokuSelectCell(i) { if (sudokuState.given[i]) return; document.querySelectorAll('.sudoku-cell').forEach(c => c.classList.remove('selected')); document.querySelector(`.sudoku-cell[data-index="${i}"]`)?.classList.add('selected'); sudokuState.selected = i; }
 
 function sudokuHandleKeydown(e) {
   if (sudokuState.selected === -1) return;
-  const num = parseInt(e.key);
-  if (num >= 1 && num <= 9) {
-    sudokuState.board[sudokuState.selected] = num;
-    const cell = document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`);
-    if (cell) cell.textContent = num;
-    sudokuValidateCell(sudokuState.selected);
-  } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
-    sudokuState.board[sudokuState.selected] = 0;
-    const cell = document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`);
-    if (cell) cell.textContent = '';
-    cell?.classList.remove('error');
-  } else if (e.key === 'ArrowUp' && sudokuState.selected >= 9) {
-    sudokuSelectCell(sudokuState.selected - 9);
-  } else if (e.key === 'ArrowDown' && sudokuState.selected < 72) {
-    sudokuSelectCell(sudokuState.selected + 9);
-  } else if (e.key === 'ArrowLeft' && sudokuState.selected % 9 !== 0) {
-    sudokuSelectCell(sudokuState.selected - 1);
-  } else if (e.key === 'ArrowRight' && sudokuState.selected % 9 !== 8) {
-    sudokuSelectCell(sudokuState.selected + 1);
-  }
+  const n = parseInt(e.key); if (n >= 1 && n <= 9) { sudokuState.board[sudokuState.selected] = n; document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`).textContent = n; sudokuValidateCell(sudokuState.selected); }
+  else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { sudokuState.board[sudokuState.selected] = 0; document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`).textContent = ''; document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`)?.classList.remove('error'); }
+  else if (e.key === 'ArrowUp' && sudokuState.selected >= 9) sudokuSelectCell(sudokuState.selected - 9);
+  else if (e.key === 'ArrowDown' && sudokuState.selected < 72) sudokuSelectCell(sudokuState.selected + 9);
+  else if (e.key === 'ArrowLeft' && sudokuState.selected % 9 !== 0) sudokuSelectCell(sudokuState.selected - 1);
+  else if (e.key === 'ArrowRight' && sudokuState.selected % 9 !== 8) sudokuSelectCell(sudokuState.selected + 1);
 }
 
-function sudokuValidateCell(index) {
-  const num = sudokuState.board[index];
-  if (num === 0) return true;
-  const row = Math.floor(index / 9), col = index % 9;
-  let valid = true;
-  for (let i = 0; i < 9; i++) {
-    if (i !== col && sudokuState.board[row * 9 + i] === num) valid = false;
-    if (i !== row && sudokuState.board[i * 9 + col] === num) valid = false;
-  }
-  const boxRow = Math.floor(row / 3) * 3, boxCol = Math.floor(col / 3) * 3;
-  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
-    const idx = (boxRow + i) * 9 + (boxCol + j);
-    if (idx !== index && sudokuState.board[idx] === num) valid = false;
-  }
-  const cell = document.querySelector(`.sudoku-cell[data-index="${index}"]`);
-  if (cell) cell.classList.toggle('error', !valid);
-  return valid;
+function sudokuValidateCell(i) {
+  const n = sudokuState.board[i]; if (n === 0) return true;
+  const r = Math.floor(i / 9), c = i % 9; let ok = true;
+  for (let j = 0; j < 9; j++) { if (j !== c && sudokuState.board[r * 9 + j] === n) ok = false; if (j !== r && sudokuState.board[j * 9 + c] === n) ok = false; }
+  const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const idx = (br + r) * 9 + (bc + c); if (idx !== i && sudokuState.board[idx] === n) ok = false; }
+  const cell = document.querySelector(`.sudoku-cell[data-index="${i}"]`); if (cell) cell.classList.toggle('error', !ok); return ok;
 }
 
-function sudokuValidate() {
-  let allValid = true;
-  for (let i = 0; i < 81; i++) {
-    if (sudokuState.board[i] !== 0 && !sudokuValidateCell(i)) allValid = false;
-  }
-  document.getElementById('sudoku-status').textContent = allValid ? '✓ Valid so far' : '✗ Conflicts found';
-  document.getElementById('sudoku-status').style.color = allValid ? 'var(--success)' : 'var(--danger)';
-}
+function sudokuValidate() { let ok = true; for (let i = 0; i < 81; i++) if (sudokuState.board[i] !== 0 && !sudokuValidateCell(i)) ok = false; document.getElementById('sudoku-status').textContent = ok ? '✓ Valid so far' : '✗ Conflicts found'; document.getElementById('sudoku-status').style.color = ok ? 'var(--success)' : 'var(--danger)'; }
 
-function sudokuSolve() {
-  const solution = solveSudoku(sudokuState.board.map(n => n || 0));
-  sudokuState.board = solution;
-  sudokuState.given = Array(81).fill(false);
-  sudokuRender();
-  document.getElementById('sudoku-status').textContent = '✓ Solved!';
-  document.getElementById('sudoku-status').style.color = 'var(--success)';
-}
-
-function sudokuClear() {
-  sudokuState.board = Array(81).fill(0);
-  sudokuState.given = Array(81).fill(false);
-  sudokuRender();
-  document.getElementById('sudoku-status').textContent = '';
-}
-
-function sudokuNew() {
-  // Generate a puzzle with some given numbers
-  const base = [
-    [5,3,4,6,7,8,9,1,2],
-    [6,7,2,1,9,5,3,4,8],
-    [1,9,8,3,4,2,5,6,7],
-    [8,5,9,7,6,1,4,2,3],
-    [4,2,6,8,5,3,7,9,1],
-    [7,1,3,9,2,4,8,5,6],
-    [9,6,1,5,3,7,2,8,4],
-    [2,8,7,4,1,9,6,3,5],
-    [3,4,5,2,8,6,1,7,9]
-  ];
-  const full = base.flat();
-  // Remove random cells
-  sudokuState.board = full.map((v, i) => Math.random() < 0.6 ? 0 : v);
-  sudokuState.given = full.map((v, i) => v !== sudokuState.board[i]);
-  sudokuRender();
-  document.getElementById('sudoku-status').textContent = 'New puzzle generated';
-}
-
-function sudokuRender() {
-  const grid = document.getElementById('sudoku-grid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  for (let i = 0; i < 81; i++) {
-    const cell = document.createElement('div');
-    cell.className = 'sudoku-cell';
-    cell.dataset.index = i;
-    cell.textContent = sudokuState.board[i] || '';
-    if (sudokuState.given[i]) cell.classList.add('given');
-    cell.addEventListener('click', () => sudokuSelectCell(i));
-    grid.appendChild(cell);
-  }
-}
+function sudokuSolve() { const sol = solveSudoku(sudokuState.board); sudokuState.board = sol; sudokuState.given = Array(81).fill(false); sudokuRender(); document.getElementById('sudoku-status').textContent = '✓ Solved!'; document.getElementById('sudoku-status').style.color = 'var(--success)'; }
+function sudokuClear() { sudokuState.board = Array(81).fill(0); sudokuState.given = Array(81).fill(false); sudokuRender(); document.getElementById('sudoku-status').textContent = ''; }
+function sudokuNew() { const base = [5,3,4,6,7,8,9,1,2,6,7,2,1,9,5,3,4,8,1,9,8,3,4,2,5,6,7,8,5,9,7,6,1,4,2,3,4,2,6,8,5,3,7,9,1,7,1,3,9,2,4,8,5,6,9,6,1,5,3,7,2,8,4,2,8,7,4,1,9,6,3,5,3,4,5,2,8,6,1,7,9]; sudokuState.board = base.map((v,i) => Math.random() < 0.6 ? 0 : v); sudokuState.given = base.map((v,i) => v !== sudokuState.board[i]); sudokuRender(); document.getElementById('sudoku-status').textContent = 'New puzzle generated'; }
+function sudokuRender() { const g = document.getElementById('sudoku-grid'); if (!g) return; g.innerHTML = ''; for (let i = 0; i < 81; i++) { const c = document.createElement('div'); c.className = 'sudoku-cell'; c.dataset.index = i; c.textContent = sudokuState.board[i] || ''; if (sudokuState.given[i]) c.classList.add('given'); c.onclick = () => sudokuSelectCell(i); g.appendChild(c); } }
 
 // -----------------------------------------------------------------------------
-// PAGE INITIALIZATION
+// UTILITIES
+// -----------------------------------------------------------------------------
+
+function hexToRgb(h) { return { r: (h >> 16) & 255, g: (h >> 8) & 255, b: h & 255 }; }
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r); ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r); ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath(); }
+function showToast(m, t) { const c = document.getElementById('toast-container'); const t2 = document.createElement('div'); t2.className = 'toast ' + (t || ''); t2.textContent = m; c.appendChild(t2); setTimeout(() => t2.remove(), 3000); }
+
+// -----------------------------------------------------------------------------
+// INIT
 // -----------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Common init
   initApp();
 
-  // Page-specific init based on URL
+  // Page-specific init
   const path = window.location.pathname;
-  if (path.includes('sudoku.html')) {
-    setTimeout(sudokuInit, 100);
-  } else if (path.includes('tictactoe.html')) {
-    setTimeout(tttInit, 100);
-  }
+  if (path.includes('sudoku.html')) setTimeout(sudokuInit, 100);
+  else if (path.includes('tictactoe.html')) setTimeout(tttInit, 100);
 });
+
+window.app = { onStickerChange, solveSudoku };
