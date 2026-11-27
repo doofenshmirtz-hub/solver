@@ -82,7 +82,7 @@ function generatePhase1Pruning(): Uint8Array {
 
   // Phase 1 allowed moves: U, U', U2, R, R', R2, F, F', F2, D, D', D2, L, L', L2, B, B', B2
   // But in Phase 1 we only care about reaching G1, so all moves are allowed
-  const phase1Moves: Move[] = BASIC_MOVES;
+  const phase1Moves: readonly Move[] = BASIC_MOVES;
 
   // Pre-compute coordinate transitions for each move
   const cornerOriTransitions: number[][] = [];
