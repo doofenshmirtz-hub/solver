@@ -220,11 +220,35 @@ class CubeRenderer {
     this.stickerColors={}; // face:index -> color
     this.hovered=null; this.dragging=false; this.last={x:0,y:0};
     this.angle={x:0.5,y:0.5}; this.dist=5;
-    this.init(); this.draw();
+    this.dpr=Math.min(window.devicePixelRatio||1,2);
+    this.ready=false;
+    this.resizeObserver = null;
+    this.init();
   }
   init(){
-    const r=this.resize(); this.canvas.width=r.w*devicePixelRatio; this.canvas.height=r.h*devicePixelRatio; this.canvas.style.width=r.w+'px'; this.canvas.style.height=r.h+'px';
-    window.addEventListener('resize',()=>this.resize());
+    // Build geometry and events after the container exists in the document.
+    this.buildGeometry();
+    this.canvas.style.width='100%';
+    this.canvas.style.height='100%';
+    this.canvas.style.touchAction='none';
+    this.canvas.addEventListener('mousemove',e=>this.onMove(e));
+    this.canvas.addEventListener('click',e=>this.onClick(e));
+    this.canvas.addEventListener('pointerdown',e=>this.onDown(e));
+    this.canvas.addEventListener('pointerup',e=>this.onUp(e));
+    this.canvas.addEventListener('pointercancel',e=>this.onUp(e));
+    this.canvas.addEventListener('pointermove',e=>this.onPointerMove(e));
+    this.canvas.addEventListener('wheel',e=>this.onWheel(e),{passive:false});
+    this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+    const resize = () => this.resize();
+    if ('ResizeObserver' in window) {
+      this.resizeObserver = new ResizeObserver(resize);
+      this.resizeObserver.observe(this.el);
+    } else {
+      window.addEventListener('resize', resize);
+    }
+    requestAnimationFrame(() => { this.resize(); this.ready=true; this.draw(); });
+  }
     this.buildGeometry();
     this.canvas.addEventListener('mousemove',e=>this.onMove(e));
     this.canvas.addEventListener('click',e=>this.onClick(e));
@@ -235,11 +259,19 @@ class CubeRenderer {
     this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
   }
   resize(){
-    const rect=this.el.getBoundingClientRect(); const w=rect.width||400, h=rect.height||400;
-    if(this.canvas.width!==w*devicePixelRatio||this.canvas.height!==h*devicePixelRatio){
-      this.canvas.width=w*devicePixelRatio; this.canvas.height=h*devicePixelRatio; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.draw();
+    const rect=this.el.getBoundingClientRect();
+    const w=Math.max(1,rect.width);
+    const h=Math.max(1,rect.height);
+    const dpr=Math.min(window.devicePixelRatio||1,2);
+    const pixelWidth=Math.round(w*dpr);
+    const pixelHeight=Math.round(h*dpr);
+    if(this.canvas.width!==pixelWidth||this.canvas.height!==pixelHeight||this.dpr!==dpr){
+      this.dpr=dpr;
+      this.canvas.width=pixelWidth;
+      this.canvas.height=pixelHeight;
+      this.draw();
     }
-    return {w,h};
+    return {w,h,dpr};
   }
   buildGeometry(){
     this.geom={}; const sz=0.58, gap=0.03, off=1.01;
@@ -259,8 +291,8 @@ class CubeRenderer {
   getColor(f,i){ return this.stickerColors[f+':'+i] || this.defaultColor(f); }
   defaultColor(f){ return {U:'W',R:'R',F:'G',D:'Y',L:'O',B:'B'}[f]; }
   setColor(f,i,c){ this.stickerColors[f+':'+i]=c; this.draw(); }
-  setAll(colors){ for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.setColor(f,i,colors[f]); }
-  setState(s,ct){ const st=cubieToStickers(s,ct); for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.setColor(f,i,st[f][i]); }
+  setAll(colors){ for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.stickerColors[f+':'+i]=colors[f]; this.draw(); }
+  setState(s,ct){ const st=cubieToStickers(s,ct); for(const f of FACE_ORDER)for(let i=0;i<9;i++) this.stickerColors[f+':'+i]=st[f][i]; this.draw(); }
 
   onMove(e){ const r=this.el.getBoundingClientRect(); const x=e.clientX-r.left, y=e.clientY-r.top; this.hovered=this.hitTest(x,y); this.canvas.style.cursor=this.hovered?'pointer':'grab'; this.draw(); }
   onClick(e){ if(this.dragging)return; const r=this.el.getBoundingClientRect(); const hit=this.hitTest(e.clientX-r.left,e.clientY-r.top); if(hit&&window.app) window.app.onStickerChange(hit.face,hit.i,this.pickerColor); }
@@ -289,7 +321,9 @@ class CubeRenderer {
   }
 
   draw(){
-    const r=this.resize(); const ctx=this.ctx; const w=this.canvas.width, h=this.canvas.height;
+    if(!this.ctx || !this.canvas.width || !this.canvas.height) return;
+    const ctx=this.ctx, w=this.canvas.width, h=this.canvas.height;
+    ctx.setTransform(1,0,0,1,0,0);
     ctx.clearRect(0,0,w,h);
     const cx=w/2, cy=h/2, sc=Math.min(w,h)/2/this.dist;
 
