@@ -849,8 +849,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Page-specific init
   const path = window.location.pathname;
-  if (path.includes('sudoku.html')) setTimeout(sudokuInit, 100);
-  else if (path.includes('tictactoe.html')) setTimeout(tttInit, 100);
+  if (path.includes('cube.html')) {
+    setTimeout(() => {
+      const inputEl = document.getElementById('cube-3d-input');
+      const visEl = document.getElementById('cube-3d-container');
+      if (inputEl) inputCube = new CubeRenderer(inputEl, 'W');
+      if (visEl) visualizerCube = new CubeRenderer(visEl, 'W');
+      resetAll();
+    }, 100);
+  } else if (path.includes('sudoku.html')) {
+    setTimeout(sudokuInit, 100);
+  } else if (path.includes('tictactoe.html')) {
+    setTimeout(tttInit, 100);
+  }
 });
+
+window.app = { onStickerChange, solveSudoku };
 
 window.app = { onStickerChange, solveSudoku };
