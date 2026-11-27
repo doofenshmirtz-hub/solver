@@ -249,15 +249,6 @@ class CubeRenderer {
     }
     requestAnimationFrame(() => { this.resize(); this.ready=true; this.draw(); });
   }
-    this.buildGeometry();
-    this.canvas.addEventListener('mousemove',e=>this.onMove(e));
-    this.canvas.addEventListener('click',e=>this.onClick(e));
-    this.canvas.addEventListener('pointerdown',e=>this.onDown(e));
-    this.canvas.addEventListener('pointerup',e=>this.onUp(e));
-    this.canvas.addEventListener('pointermove',e=>this.onPointerMove(e));
-    this.canvas.addEventListener('wheel',e=>this.onWheel(e),{passive:false});
-    this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
-  }
   resize(){
     const rect=this.el.getBoundingClientRect();
     const w=Math.max(1,rect.width);
