@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rubik's Cube Solver</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🧩 Rubik's Cube Solver</h1>
+      <p class="subtitle">Cubie Representation • Kociemba Two-Phase Algorithm</p>
+    </header>
+
+    <main>
+      <section class="input-section">
+        <h2>Enter Cube State</h2>
+        <p class="hint">Click each sticker to set its color. Centers (position 4) define the color scheme.</p>
+
+        <div class="cube-net" id="cube-net">
+          <!-- Faces will be rendered by JS -->
+        </div>
+
+        <div class="color-palette" id="color-palette" role="group" aria-label="Color palette">
+          <!-- Color buttons injected by JS -->
+        </div>
+
+        <div class="actions">
+          <button id="solve-btn" class="btn primary" disabled>Solve</button>
+          <button id="reset-btn" class="btn secondary">Reset</button>
+          <button id="random-btn" class="btn secondary">Random Scramble</button>
+        </div>
+      </section>
+
+      <section class="output-section" id="output-section" hidden>
+        <h2>Solution</h2>
+        <div class="solution-info">
+          <span id="move-count">0 moves</span>
+          <span id="solve-time"></span>
+        </div>
+        <div class="moves-container">
+          <div id="moves-display" class="moves-display"></div>
+          <button id="copy-btn" class="btn small" hidden>Copy Moves</button>
+        </div>
+        <div id="error-display" class="error" hidden></div>
+      </section>
+
+      <section class="visualizer-section" id="visualizer-section" hidden>
+        <h2>Cube Visualization</h2>
+        <canvas id="cube-canvas" width="400" height="400"></canvas>
+        <div class="viz-controls">
+          <button id="play-btn" class="btn small">▶ Play</button>
+          <button id="pause-btn" class="btn small" hidden>⏸ Pause</button>
+          <button id="step-btn" class="btn small">⏭ Step</button>
+          <input type="range" id="speed-slider" min="100" max="2000" value="500" step="100">
+          <span id="speed-label">500ms</span>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank">Cubie Representation Solver</a> •
+      54 stickers → 40 numbers (8 corners + 12 edges) • Kociemba Two-Phase</p>
+    </footer>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
