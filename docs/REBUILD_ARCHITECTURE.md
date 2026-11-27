@@ -26,7 +26,7 @@ The browser UI is responsible for input, rendering, accessibility, animation, an
 | Puzzle | Planned method | Status |
 |---|---|---|
 | 2×2 | Corner-state search / IDA* | Planned |
-| 3×3 | Complete Kociemba two-phase solver | In progress; current TypeScript Phase 2 is incomplete |
+| 3×3 | Kociemba two-phase solver (`rubik-solver` MIT package) in a module Web Worker | Implemented in browser worker; regression tests exercise valid scrambles and replay verification |
 | 4×4 | Reduction with parity handling | Planned |
 | 5×5+ | Reduction-based engines | Planned |
 | Pyraminx | Dedicated orientation/permutation solver | Planned |
@@ -59,4 +59,4 @@ Do not advertise a puzzle as solvable until its engine passes known-state, rando
 
 ## Important limitation
 
-This foundation PR is not the completed multi-puzzle rebuild. It deliberately establishes correctness gates and documents the staged cube implementation. The next cube milestone is a complete, independently tested 3×3 Kociemba Phase 1 + Phase 2 engine, followed by 2×2 and 4×4.
+This foundation PR is not the completed multi-puzzle rebuild. It deliberately establishes correctness gates and documents the staged cube implementation. The next cube milestone is camera calibration and mobile testing, then a dedicated 2×2 solver followed by 4×4 reduction and parity handling. The legacy TypeScript Phase 1 code remains incomplete and is not used by the browser solver.
