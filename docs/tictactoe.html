@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tic-Tac-Toe - Play against Minimax AI">
+  <meta name="theme-color" content="#0a0f1a">
+  <title>Tic-Tac-Toe AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav-bar">
+    <a href="../index.html" class="nav-brand">🧩 Solver Suite</a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Cube Solver</a>
+      <a href="cube.html" class="nav-link">Algorithms</a>
+      <a href="sudoku.html" class="nav-link">Sudoku</a>
+      <a href="tictactoe.html" class="nav-link active">TicTacToe</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header>
+      <span class="header-badge">Tic-Tac-Toe AI</span>
+      <h1>Tic-Tac-Toe</h1>
+      <p class="subtitle">Play against Minimax AI • Perfect play guaranteed • Choose your difficulty</p>
+    </header>
+
+    <main>
+      <section class="ttt-section">
+        <div class="ttt-toolbar">
+          <div class="ttt-score">
+            <span>You (X): <strong id="ttt-score-x">0</strong></span>
+            <span>Draws: <strong id="ttt-score-draw">0</strong></span>
+            <span>AI (O): <strong id="ttt-score-o">0</strong></span>
+          </div>
+          <div class="ttt-controls">
+            <button id="ttt-new" class="btn secondary">New Game</button>
+            <button id="ttt-swap" class="btn secondary">Swap Sides</button>
+          </div>
+        </div>
+
+        <div class="ttt-board" id="ttt-board" role="grid" aria-label="Tic-Tac-Toe 3x3 board">
+          <button class="ttt-cell" data-pos="0" aria-label="Top left"></button>
+          <button class="ttt-cell" data-pos="1" aria-label="Top middle"></button>
+          <button class="ttt-cell" data-pos="2" aria-label="Top right"></button>
+          <button class="ttt-cell" data-pos="3" aria-label="Middle left"></button>
+          <button class="ttt-cell" data-pos="4" aria-label="Center"></button>
+          <button class="ttt-cell" data-pos="5" aria-label="Middle right"></button>
+          <button class="ttt-cell" data-pos="6" aria-label="Bottom left"></button>
+          <button class="ttt-cell" data-pos="7" aria-label="Bottom middle"></button>
+          <button class="ttt-cell" data-pos="8" aria-label="Bottom right"></button>
+        </div>
+
+        <div id="ttt-status" class="ttt-status" aria-live="polite">Your turn (X)</div>
+
+        <div class="difficulty-selector">
+          <label for="ttt-difficulty">AI Difficulty:</label>
+          <select id="ttt-difficulty">
+            <option value="easy">Easy (Random)</option>
+            <option value="medium">Medium (Smart)</option>
+            <option value="hard" selected>Hard (Minimax - Perfect)</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="algorithm-info">
+        <h2>Minimax Algorithm</h2>
+        <div class="algo-explanation">
+          <h3>How the AI Thinks</h3>
+          <p>The <strong>Minimax</strong> algorithm explores all possible game states to find the optimal move:</p>
+          <ul>
+            <li><strong>Max player</strong> (AI) tries to maximize score</li>
+            <li><strong>Min player</strong> (Human) tries to minimize score</li>
+            <li>Win = +10, Loss = -10, Draw = 0</li>
+            <li>Recursively evaluates all future positions</li>
+          </ul>
+          <p>On <strong>Hard</strong> difficulty, the AI plays perfectly - it cannot lose. On <strong>Medium</strong>, it sometimes makes suboptimal moves. On <strong>Easy</strong>, it plays randomly.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

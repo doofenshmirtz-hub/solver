@@ -731,4 +731,359 @@ function solveSudoku(board) {
   return solution;
 }
 
-window.app = { onStickerChange, solveSudoku };
+// -----------------------------------------------------------------------------
+// TIC-TAC-TOE AI
+// -----------------------------------------------------------------------------
+
+function tttCheckWin(board, player) {
+  const lines = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // cols
+    [0, 4, 8], [2, 4, 6]             // diagonals
+  ];
+  return lines.some(([a, b, c]) => board[a] === player && board[b] === player && board[c] === player);
+}
+
+function tttGetEmpty(board) {
+  return board.map((v, i) => v === '' ? i : null).filter(v => v !== null);
+}
+
+function tttMinimax(board, depth, isMaximizing, player, opponent) {
+  if (tttCheckWin(board, player)) return 10 - depth;
+  if (tttCheckWin(board, opponent)) return depth - 10;
+  if (tttGetEmpty(board).length === 0) return 0;
+
+  if (isMaximizing) {
+    let bestScore = -Infinity;
+    for (const move of tttGetEmpty(board)) {
+      board[move] = player;
+      const score = tttMinimax(board, depth + 1, false, player, opponent);
+      board[move] = '';
+      bestScore = Math.max(score, bestScore);
+    }
+    return bestScore;
+  } else {
+    let bestScore = Infinity;
+    for (const move of tttGetEmpty(board)) {
+      board[move] = opponent;
+      const score = tttMinimax(board, depth + 1, true, player, opponent);
+      board[move] = '';
+      bestScore = Math.min(score, bestScore);
+    }
+    return bestScore;
+  }
+}
+
+function tttBestMove(board, difficulty, player, opponent) {
+  const empty = tttGetEmpty(board);
+  if (empty.length === 0) return null;
+
+  if (difficulty === 'easy') {
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  if (difficulty === 'medium') {
+    // 70% chance optimal, 30% random
+    if (Math.random() < 0.7) {
+      return tttBestMove(board, 'hard', player, opponent);
+    }
+    return empty[Math.floor(Math.random() * empty.length)];
+  }
+
+  // Hard - perfect minimax
+  let bestScore = -Infinity;
+  let bestMove = null;
+  for (const move of empty) {
+    board[move] = player;
+    const score = tttMinimax(board, 0, false, player, opponent);
+    board[move] = '';
+    if (score > bestScore) {
+      bestScore = score;
+      bestMove = move;
+    }
+  }
+  return bestMove;
+}
+
+let tttState = {
+  board: Array(9).fill(''),
+  currentPlayer: 'X',
+  playerSymbol: 'X',
+  aiSymbol: 'O',
+  difficulty: 'hard',
+  scores: { x: 0, o: 0, draw: 0 },
+  gameOver: false
+};
+
+function tttInit() {
+  const cells = document.querySelectorAll('.ttt-cell');
+  cells.forEach(cell => {
+    cell.textContent = '';
+    cell.disabled = false;
+    cell.classList.remove('x', 'o', 'winning');
+    cell.addEventListener('click', () => tttHandleClick(parseInt(cell.dataset.pos)));
+  });
+
+  tttState.board = Array(9).fill('');
+  tttState.currentPlayer = 'X';
+  tttState.gameOver = false;
+  tttUpdateStatus('Your turn (X)');
+
+  document.getElementById('ttt-new')?.addEventListener('click', tttInit);
+  document.getElementById('ttt-swap')?.addEventListener('click', tttSwapSides);
+  document.getElementById('ttt-difficulty')?.addEventListener('change', (e) => {
+    tttState.difficulty = e.target.value;
+    tttInit();
+  });
+}
+
+function tttSwapSides() {
+  const temp = tttState.playerSymbol;
+  tttState.playerSymbol = tttState.aiSymbol;
+  tttState.aiSymbol = temp;
+  tttInit();
+}
+
+function tttHandleClick(pos) {
+  if (tttState.gameOver || tttState.board[pos] !== '' || tttState.currentPlayer !== tttState.playerSymbol) return;
+
+  tttMakeMove(pos, tttState.playerSymbol);
+  if (tttCheckGameEnd()) return;
+
+  tttState.currentPlayer = tttState.aiSymbol;
+  tttUpdateStatus('AI thinking...');
+
+  setTimeout(() => {
+    if (!tttState.gameOver) {
+      const aiMove = tttBestMove(tttState.board, tttState.difficulty, tttState.aiSymbol, tttState.playerSymbol);
+      if (aiMove !== null) {
+        tttMakeMove(aiMove, tttState.aiSymbol);
+        tttCheckGameEnd();
+      }
+    }
+    tttState.currentPlayer = tttState.playerSymbol;
+    if (!tttState.gameOver) tttUpdateStatus('Your turn (X)');
+  }, 300);
+}
+
+function tttMakeMove(pos, player) {
+  tttState.board[pos] = player;
+  const cell = document.querySelector(`.ttt-cell[data-pos="${pos}"]`);
+  if (cell) {
+    cell.textContent = player;
+    cell.classList.add(player.toLowerCase());
+    cell.disabled = true;
+  }
+}
+
+function tttCheckGameEnd() {
+  if (tttCheckWin(tttState.board, 'X')) {
+    tttState.gameOver = true;
+    tttState.scores.x++;
+    tttUpdateScore();
+    tttHighlightWin('X');
+    tttUpdateStatus('You win! 🎉');
+    return true;
+  }
+  if (tttCheckWin(tttState.board, 'O')) {
+    tttState.gameOver = true;
+    tttState.scores.o++;
+    tttUpdateScore();
+    tttHighlightWin('O');
+    tttUpdateStatus('AI wins! 🤖');
+    return true;
+  }
+  if (tttGetEmpty(tttState.board).length === 0) {
+    tttState.gameOver = true;
+    tttState.scores.draw++;
+    tttUpdateScore();
+    tttUpdateStatus('Draw! 🤝');
+    return true;
+  }
+  return false;
+}
+
+function tttHighlightWin(player) {
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  for (const [a,b,c] of lines) {
+    if (tttState.board[a] === player && tttState.board[b] === player && tttState.board[c] === player) {
+      document.querySelector(`.ttt-cell[data-pos="${a}"]`)?.classList.add('winning');
+      document.querySelector(`.ttt-cell[data-pos="${b}"]`)?.classList.add('winning');
+      document.querySelector(`.ttt-cell[data-pos="${c}"]`)?.classList.add('winning');
+      break;
+    }
+  }
+}
+
+function tttUpdateScore() {
+  document.getElementById('ttt-score-x').textContent = tttState.scores.x;
+  document.getElementById('ttt-score-o').textContent = tttState.scores.o;
+  document.getElementById('ttt-score-draw').textContent = tttState.scores.draw;
+}
+
+function tttUpdateStatus(msg) {
+  const el = document.getElementById('ttt-status');
+  if (el) el.textContent = msg;
+}
+
+// -----------------------------------------------------------------------------
+// SUDOKU UI
+// -----------------------------------------------------------------------------
+
+let sudokuState = {
+  board: Array(81).fill(0),
+  given: Array(81).fill(false),
+  selected: -1
+};
+
+function sudokuInit() {
+  const grid = document.getElementById('sudoku-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  for (let i = 0; i < 81; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'sudoku-cell';
+    cell.dataset.index = i;
+    cell.textContent = sudokuState.board[i] || '';
+    if (sudokuState.given[i]) cell.classList.add('given');
+    cell.addEventListener('click', () => sudokuSelectCell(i));
+    grid.appendChild(cell);
+  }
+
+  document.getElementById('sudoku-solve')?.addEventListener('click', sudokuSolve);
+  document.getElementById('sudoku-clear')?.addEventListener('click', sudokuClear);
+  document.getElementById('sudoku-new')?.addEventListener('click', sudokuNew);
+  document.getElementById('sudoku-validate')?.addEventListener('click', sudokuValidate);
+
+  document.addEventListener('keydown', sudokuHandleKeydown);
+}
+
+function sudokuSelectCell(index) {
+  if (sudokuState.given[index]) return;
+  document.querySelectorAll('.sudoku-cell').forEach(c => c.classList.remove('selected'));
+  const cell = document.querySelector(`.sudoku-cell[data-index="${index}"]`);
+  if (cell) cell.classList.add('selected');
+  sudokuState.selected = index;
+}
+
+function sudokuHandleKeydown(e) {
+  if (sudokuState.selected === -1) return;
+  const num = parseInt(e.key);
+  if (num >= 1 && num <= 9) {
+    sudokuState.board[sudokuState.selected] = num;
+    const cell = document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`);
+    if (cell) cell.textContent = num;
+    sudokuValidateCell(sudokuState.selected);
+  } else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') {
+    sudokuState.board[sudokuState.selected] = 0;
+    const cell = document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`);
+    if (cell) cell.textContent = '';
+    cell?.classList.remove('error');
+  } else if (e.key === 'ArrowUp' && sudokuState.selected >= 9) {
+    sudokuSelectCell(sudokuState.selected - 9);
+  } else if (e.key === 'ArrowDown' && sudokuState.selected < 72) {
+    sudokuSelectCell(sudokuState.selected + 9);
+  } else if (e.key === 'ArrowLeft' && sudokuState.selected % 9 !== 0) {
+    sudokuSelectCell(sudokuState.selected - 1);
+  } else if (e.key === 'ArrowRight' && sudokuState.selected % 9 !== 8) {
+    sudokuSelectCell(sudokuState.selected + 1);
+  }
+}
+
+function sudokuValidateCell(index) {
+  const num = sudokuState.board[index];
+  if (num === 0) return true;
+  const row = Math.floor(index / 9), col = index % 9;
+  let valid = true;
+  for (let i = 0; i < 9; i++) {
+    if (i !== col && sudokuState.board[row * 9 + i] === num) valid = false;
+    if (i !== row && sudokuState.board[i * 9 + col] === num) valid = false;
+  }
+  const boxRow = Math.floor(row / 3) * 3, boxCol = Math.floor(col / 3) * 3;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
+    const idx = (boxRow + i) * 9 + (boxCol + j);
+    if (idx !== index && sudokuState.board[idx] === num) valid = false;
+  }
+  const cell = document.querySelector(`.sudoku-cell[data-index="${index}"]`);
+  if (cell) cell.classList.toggle('error', !valid);
+  return valid;
+}
+
+function sudokuValidate() {
+  let allValid = true;
+  for (let i = 0; i < 81; i++) {
+    if (sudokuState.board[i] !== 0 && !sudokuValidateCell(i)) allValid = false;
+  }
+  document.getElementById('sudoku-status').textContent = allValid ? '✓ Valid so far' : '✗ Conflicts found';
+  document.getElementById('sudoku-status').style.color = allValid ? 'var(--success)' : 'var(--danger)';
+}
+
+function sudokuSolve() {
+  const solution = solveSudoku(sudokuState.board.map(n => n || 0));
+  sudokuState.board = solution;
+  sudokuState.given = Array(81).fill(false);
+  sudokuRender();
+  document.getElementById('sudoku-status').textContent = '✓ Solved!';
+  document.getElementById('sudoku-status').style.color = 'var(--success)';
+}
+
+function sudokuClear() {
+  sudokuState.board = Array(81).fill(0);
+  sudokuState.given = Array(81).fill(false);
+  sudokuRender();
+  document.getElementById('sudoku-status').textContent = '';
+}
+
+function sudokuNew() {
+  // Generate a puzzle with some given numbers
+  const base = [
+    [5,3,4,6,7,8,9,1,2],
+    [6,7,2,1,9,5,3,4,8],
+    [1,9,8,3,4,2,5,6,7],
+    [8,5,9,7,6,1,4,2,3],
+    [4,2,6,8,5,3,7,9,1],
+    [7,1,3,9,2,4,8,5,6],
+    [9,6,1,5,3,7,2,8,4],
+    [2,8,7,4,1,9,6,3,5],
+    [3,4,5,2,8,6,1,7,9]
+  ];
+  const full = base.flat();
+  // Remove random cells
+  sudokuState.board = full.map((v, i) => Math.random() < 0.6 ? 0 : v);
+  sudokuState.given = full.map((v, i) => v !== sudokuState.board[i]);
+  sudokuRender();
+  document.getElementById('sudoku-status').textContent = 'New puzzle generated';
+}
+
+function sudokuRender() {
+  const grid = document.getElementById('sudoku-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < 81; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'sudoku-cell';
+    cell.dataset.index = i;
+    cell.textContent = sudokuState.board[i] || '';
+    if (sudokuState.given[i]) cell.classList.add('given');
+    cell.addEventListener('click', () => sudokuSelectCell(i));
+    grid.appendChild(cell);
+  }
+}
+
+// -----------------------------------------------------------------------------
+// PAGE INITIALIZATION
+// -----------------------------------------------------------------------------
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Common init
+  initApp();
+
+  // Page-specific init based on URL
+  const path = window.location.pathname;
+  if (path.includes('sudoku.html')) {
+    setTimeout(sudokuInit, 100);
+  } else if (path.includes('tictactoe.html')) {
+    setTimeout(tttInit, 100);
+  }
+});

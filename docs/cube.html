@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rubik's Cube Algorithms - CFOP, Beginner, Roux, ZZ, R2 Methods">
+  <meta name="theme-color" content="#0a0f1a">
+  <title>Cube Algorithms & Methods</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav-bar">
+    <a href="../index.html" class="nav-brand">🧩 Solver Suite</a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Cube Solver</a>
+      <a href="cube.html" class="nav-link active">Algorithms</a>
+      <a href="sudoku.html" class="nav-link">Sudoku</a>
+      <a href="tictactoe.html" class="nav-link">TicTacToe</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header>
+      <span class="header-badge">Cube Algorithms</span>
+      <h1>Cube Methods & Algorithms</h1>
+      <p class="subtitle">Complete algorithm library for all popular solving methods</p>
+    </header>
+
+    <main>
+      <!-- Beginner Method -->
+      <section class="method-section" id="beginner">
+        <h2>🟢 Beginner Method (Layer by Layer)</h2>
+        <p class="method-desc">The easiest method to learn. Solves the cube layer by layer: Cross → Corners → Middle Layer → Yellow Cross → Yellow Edges → Yellow Corners → Orient Corners.</p>
+
+        <div class="algorithms-grid">
+          <div class="algo-card">
+            <h4>White Cross</h4>
+            <p>Intuitive - place 4 white edges around white center matching side centers</p>
+          </div>
+
+          <div class="algo-card">
+            <h4>White Corners</h4>
+            <code class="algo">R U R' U'</code>
+            <p>Repeat until corner is solved. Hold cube with corner at URF.</p>
+          </div>
+
+          <div class="algo-card">
+            <h4>Middle Layer Edges</h4>
+            <code class="algo">U R U' R' U' F' U F</code>
+            <p>For edge going right. Mirror: U' L' U L U F U' F' for left.</p>
+          </div>
+
+          <div class="algo-card">
+            <h4>Yellow Cross</h4>
+            <code class="algo">F R U R' U' F'</code>
+            <p>Dot → Line → L-shape → Cross. Repeat as needed.</p>
+          </div>
+
+          <div class="algo-card">
+            <h4>Yellow Edges</h4>
+            <code class="algo">R U R' U R U2 R' U</code>
+            <p>Align 2 edges, hold them at back/left, then apply.</p>
+          </div>
+
+          <div class="algo-card">
+            <h4>Yellow Corners Position</h4>
+            <code class="algo">U R U' L' U R' U' L</code>
+            <p>Cycle 3 corners. Repeat until all in correct spots.</p>
+          </div>
+
+          <div class="algo-card">
+            <h4>Orient Yellow Corners</h4>
+            <code class="algo">R' D' R D</code>
+            <p>Hold unsolved corner at URF. Repeat 2-4 times. Then U to next.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- CFOP Method -->
+      <section class="method-section" id="cfop">
+        <h2>🔵 CFOP (Fridrich) - Speedcubing Standard</h2>
+        <p class="method-desc">Cross → F2L (First 2 Layers) → OLL (Orient Last Layer) → PLL (Permute Last Layer). Used by most world record holders.</p>
+
+        <h3>F2L - First Two Layers</h3>
+        <p class="method-desc">41 cases. Solve corner-edge pairs and insert. Key cases:</p>
+        <div class="algorithms-grid">
+          <div class="algo-card">
+            <h4>Case 1 - Basic Pair</h4>
+            <code class="algo">R U R'</code>
+          </div>
+          <div class="algo-card">
+            <h4>Case 2 - Separated</h4>
+            <code class="algo">U R U' R'</code>
+          </div>
+          <div class="algo-card">
+            <h4>Case 3 - Top Pair</h4>
+            <code class="algo">R U2 R' U' R U R'</code>
+          </div>
+        </div>
+
+        <h3>OLL - Orient Last Layer (57 algorithms)</h3>
+        <p class="method-desc">Make all yellow facelets face up. Top 10 most common:</p>
+        <div class="algorithms-grid">
+          <div class="algo-card">
+            <h4>OLL 1 - Cross</h4>
+            <code class="algo">F R U R' U' F'</code>
+          </div>
+          <div class="algo-card">
+            <h4>OLL 2 - Line</h4>
+            <code class="algo">F R U R' U' F' f R U R' U' f'</code>
+          </div>
+          <div class="algo-card">
+            <h4>OLL 3 - Dot</h4>
+            <code class="algo">F R U R' U' F' f R U R' U' f'</code>
+          </div>
+          <div class="algo-card">
+            <h4>OLL 22 - Sexy Move</h4>
+            <code class="algo">R U R' U R U2 R'</code>
+          </div>
+          <div class="algo-card">
+            <h4>OLL 23 - Anti-Sexy</h4>
+            <code class="algo">R U2 R' U' R U' R'</code>
+          </div>
+          <div class="algo-card">
+            <h4>OLL 24 - Sune</h4>
+            <code class="algo">R U R' U R U2 R'</code>
+          </div>
+          <div class="algo-card">
+            <h4>OLL 25 - Anti-Sune</h4>
+            <code class="algo">R U2 R' U' R U' R'</code>
+          </div>
+          <div class="algo-card">
+            <h4>OLL 27 - All Corners</h4>
+            <code class="algo">R U R' U' R' F R2 U' R' U' R U R' F'</code>
+          </div>
+        </div>
+
+        <h3>PLL - Permute Last Layer (21 algorithms)</h3>
+        <p class="method-desc">Position pieces correctly. Essential PLLs:</p>
+        <div class="algorithms-grid">
+          <div class="algo-card">
+            <h4>PLL Aa - 3-cycle</h4>
+            <code class="algo">R U' R U R U R U' R' U' R2</code>
+          </div>
+          <div class="algo-card">
+            <h4>PLL Ab - Reverse</h4>
+            <code class="algo">R2 U R U R' U' R' U' R' U R'</code>
+          </div>
+          <div class="algo-card">
+            <h4>PLL E - Edge Swap</h4>
+            <code class="algo">M2 U M U2 M U M2</code>
+          </div>
+          <div class="algo-card">
+            <h4>PLL H - Double Swap</h4>
+            <code class="algo">M2 U M2 U2 M2 U M2</code>
+          </div>
+          <div class="algo-card">
+            <h4>PLL T - T-Perm</h4>
+            <code class="algo">R U R' U' R' F R2 U' R' U' R U R' F'</code>
+          </div>
+          <div class="algo-card">
+            <h4>PLL Jb - J-Perm</h4>
+            <code class="algo">R U R' F' R U R' U' R' F R2 U' R' U'</code>
+          </div>
+          <div class="algo-card">
+            <h4>PLL Y - Y-Perm</h4>
+            <code class="algo">F R U' R' U' R U R' F' R U R' U' R' F R F'</code>
+          </div>
+        </div>
+      </section>
+
+      <!-- Roux Method -->
+      <section class="method-section" id="roux">
+        <h2>🟣 Roux Method</h2>
+        <p class="method-desc">Block building method: First Block → Second Block → CMLL → LSE (Last Six Edges). Fewer algorithms, intuitive.</p>
+        <div class="algorithms-grid">
+          <div class="algo-card">
+            <h4>First Block (FB)</h4>
+            <p>Build 1x2x3 block on left (DL, DFL, DLB, FL, BL, UL). Intuitive.</p>
+          </div>
+          <div class="algo-card">
+            <h4>Second Block (SB)</h4>
+            <p>Build 1x2x3 on right (DR, DFR, DRB, FR, BR, UR). Intuitive.</p>
+          </div>
+          <div class="algo-card">
+            <h4>CMLL (46 algs)</h4>
+            <code class="algo">R U2 R' U' R U R' U' R U' R'</code>
+            <p>Orient + permute last layer corners. Example: Sune.</p>
+          </div>
+          <div class="algo-card">
+            <h4>LSE (Last Six Edges)</h4>
+            <code class="algo">M U M' U2 M' U M'</code>
+            <p>Orient edges → permute edges with M moves only.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ZZ Method -->
+      <section class="method-section" id="zz">
+        <h2>🟠 ZZ Method</h2>
+        <p class="method-desc">EOLine → F2L → LL. Edge orientation first means no F/B moves in F2L, simpler last layer.</p>
+        <div class="algorithms-grid">
+          <div class="algo-card">
+            <h4>EOLine</h4>
+            <code class="algo">F (R U R' U') F'</code>
+            <p>Orient all edges while solving DF/DB. Then F2L with only R/U/L/D.</p>
+          </div>
+          <div class="algo-card">
+            <h4>ZZ F2L</h4>
+            <p>Only R, U, L, D moves. No cube rotations needed.</p>
+          </div>
+          <div class="algo-card">
+            <h4>ZBLL (493 algs)</h4>
+            <p>Solve last layer in 1 look. Most use OCLL+PLL subset.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- R2 Method -->
+      <section class="method-section" id="r2">
+        <h2>🔴 R2 Method</h2>
+        <p class="method-desc">Uses mostly R2, U, and f moves. Good for one-handed or fewest moves.</p>
+        <div class="algorithms-grid">
+          <div class="algo-card">
+            <h4>Cross + EO</h4>
+            <code class="algo">R2 U R2 U' R2</code>
+          </div>
+          <div class="algo-card">
+            <h4>Corner Position</h4>
+            <code class="algo">R2 U R2 U2 R2</code>
+          </div>
+          <div class="algo-card">
+            <h4>Parity Fix</h4>
+            <code class="algo">r U2 r' U2 r' F r F'</code>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sudoku Solver - 9x9 Grid Backtracking Solver">
+  <meta name="theme-color" content="#0a0f1a">
+  <title>Sudoku Solver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="nav-bar">
+    <a href="../index.html" class="nav-brand">🧩 Solver Suite</a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link">Cube Solver</a>
+      <a href="cube.html" class="nav-link">Algorithms</a>
+      <a href="sudoku.html" class="nav-link active">Sudoku</a>
+      <a href="tictactoe.html" class="nav-link">TicTacToe</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <header>
+      <span class="header-badge">Sudoku Solver</span>
+      <h1>Sudoku Solver</h1>
+      <p class="subtitle">9×9 Grid Backtracking Algorithm • Click cells to enter numbers • Auto-solve in milliseconds</p>
+    </header>
+
+    <main>
+      <section class="sudoku-section">
+        <div class="sudoku-toolbar">
+          <button id="sudoku-solve" class="btn primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Solve Puzzle
+          </button>
+          <button id="sudoku-clear" class="btn secondary">Clear Grid</button>
+          <button id="sudoku-new" class="btn secondary">New Puzzle</button>
+          <button id="sudoku-validate" class="btn ghost">Validate</button>
+          <span id="sudoku-status" class="status"></span>
+        </div>
+
+        <div class="sudoku-grid" id="sudoku-grid" role="grid" aria-label="Sudoku 9x9 grid"></div>
+
+        <div class="sudoku-hints">
+          <p>Click a cell, then type a number (1-9). Use arrow keys to navigate. Backspace/Delete to clear.</p>
+        </div>
+      </section>
+
+      <section class="algorithm-info">
+        <h2>How it Works</h2>
+        <div class="algo-explanation">
+          <h3>Backtracking Algorithm</h3>
+          <p>This solver uses a classic <strong>depth-first backtracking</strong> algorithm:</p>
+          <ol>
+            <li>Find an empty cell</li>
+            <li>Try numbers 1-9 that don't violate Sudoku rules</li>
+            <li>Recursively solve the rest</li>
+            <li>If no number works, backtrack and try a different number</li>
+          </ol>
+          <p>Time complexity: O(9^n) worst case, but solves typical puzzles in < 10ms.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a></p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Rubik's Cube Solver - Interactive 3D Cube with Cubie Representation & Kociemba Two-Phase Algorithm">
+  <meta name="description" content="Rubik's Cube Solver - Interactive Canvas 2D Cube with Cubie Representation & Kociemba Two-Phase Algorithm">
   <meta name="theme-color" content="#0a0f1a">
   <title>Rubik's Cube Solver</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,24 +12,33 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <nav class="nav-bar">
+    <a href="../index.html" class="nav-brand">🧩 Solver Suite</a>
+    <div class="nav-links">
+      <a href="index.html" class="nav-link active">Cube Solver</a>
+      <a href="cube.html" class="nav-link">Algorithms</a>
+      <a href="sudoku.html" class="nav-link">Sudoku</a>
+      <a href="tictactoe.html" class="nav-link">TicTacToe</a>
+    </div>
+  </nav>
+
   <div class="container">
     <header>
-      <span class="header-badge">Web Solver v3.0</span>
+      <span class="header-badge">Cube Solver v3.0</span>
       <h1>Rubik's Cube Solver</h1>
-      <p class="subtitle">Interactive 3D Cube (Canvas 2D) • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
+      <p class="subtitle">Interactive 2D Canvas Cube • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
     </header>
 
     <main>
       <section class="input-section" aria-labelledby="input-heading">
         <h2 id="input-heading">Enter Cube State</h2>
-        <p class="section-desc">Click stickers on the 3D cube to set colors. Drag to rotate, scroll to zoom. Centers define the color scheme (White↔Yellow, Red↔Orange, Green↔Blue).</p>
+        <p class="section-desc">Click stickers on the 2D cube to set colors. Drag to rotate, scroll to zoom. Centers define the color scheme (White↔Yellow, Red↔Orange, Green↔Blue).</p>
 
         <div class="cube-3d-wrapper">
-          <div id="cube-3d-input" class="cube-3d-container" role="application" aria-label="Interactive 3D Rubik's cube - click stickers to change colors"></div>
+          <div id="cube-3d-input" class="cube-3d-container" role="application" aria-label="Interactive 2D Canvas cube - click stickers to change colors"></div>
         </div>
 
         <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers on the cube">
-          <!-- Color buttons injected by JS -->
         </div>
 
         <div class="actions">
@@ -53,12 +62,11 @@
               <span class="face-tag L">L (Left/Orange)</span>
               <span class="face-tag B">B (Back/Blue)</span>
             </div>
-            <p>Select a color from the palette, then click a sticker on the 3D cube. The centers (middle stickers) must follow standard opposites.</p>
+            <p>Select a color from the palette, then click a sticker on the cube. The centers (middle stickers) must follow standard opposites.</p>
           </div>
         </details>
       </section>
 
-      <!-- Output Section -->
       <section class="output-section" id="output-section" hidden aria-labelledby="output-heading">
         <h2 id="output-heading">Solution</h2>
 
@@ -83,9 +91,7 @@
           </button>
         </div>
 
-        <div class="moves-display" id="moves-display" aria-live="polite" aria-label="Solution moves">
-          <!-- Moves rendered here -->
-        </div>
+        <div class="moves-display" id="moves-display" aria-live="polite" aria-label="Solution moves"></div>
 
         <div id="error-display" class="error-display" hidden role="alert" aria-live="assertive">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
@@ -93,13 +99,12 @@
         </div>
       </section>
 
-      <!-- 3D Visualizer Section -->
       <section class="visualizer-section" id="visualizer-section" hidden aria-labelledby="viz-heading">
         <h2 id="viz-heading">Solution Visualization</h2>
-        <p class="section-desc">Watch the 3D cube solve step by step. Drag to rotate view, use controls to play through the solution.</p>
+        <p class="section-desc">Watch the 2D cube solve step by step. Drag to rotate view, use controls to play through the solution.</p>
 
         <div class="cube-3d-wrapper">
-          <div id="cube-3d-container" class="cube-3d-container" role="application" aria-label="Animated 3D cube showing solution steps"></div>
+          <div id="cube-3d-container" class="cube-3d-container" role="application" aria-label="Animated 2D cube showing solution steps"></div>
         </div>
 
         <div class="viz-controls">
@@ -133,7 +138,6 @@
     </footer>
   </div>
 
-  <!-- Toast Container -->
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
 
   <script src="app.js"></script>
