@@ -2,8 +2,22 @@
 // Rubik's Cube Solver - 3D Web App with Three.js
 // ============================================================================
 
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js';
+// Dynamic imports with error handling
+let THREE, OrbitControls;
+
+async function loadThreeJS() {
+  try {
+    const threeModule = await import('https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js');
+    THREE = threeModule;
+    const controlsModule = await import('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js');
+    OrbitControls = controlsModule.OrbitControls;
+    console.log('Three.js loaded successfully');
+    return true;
+  } catch (e) {
+    console.error('Failed to load Three.js:', e);
+    return false;
+  }
+}
 
 // -----------------------------------------------------------------------------
 // CONSTANTS & TYPES (same as before)
@@ -373,11 +387,32 @@ class RubiksCube3D {
     this.selectedColor = 'W';
     this.isDragging = false;
     this.dragStart = null;
+    this.initialized = false;
 
-    this.initThree();
-    this.createCube();
-    this.setupEvents();
-    this.animate();
+    try {
+      this.initThree();
+      this.createCube();
+      this.setupEvents();
+      this.animate();
+      this.initialized = true;
+      console.log('RubiksCube3D initialized successfully');
+    } catch (e) {
+      console.error('Failed to initialize RubiksCube3D:', e);
+      this.showError(e.message);
+    }
+  }
+
+  showError(msg) {
+    this.container.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--danger);padding:20px;text-align:center;font-family:var(--font-sans);">
+        <div>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+          <p style="font-weight:600;margin-bottom:8px;">3D Cube Failed to Load</p>
+          <p style="font-size:0.85rem;color:var(--text-muted);">${msg}</p>
+          <button onclick="location.reload()" class="btn primary small" style="margin-top:12px;">Reload Page</button>
+        </div>
+      </div>
+    `;
   }
 
   initThree() {
@@ -659,6 +694,24 @@ let selectedColor = 'W';
 let solutionMoves = [];
 let animState = null;
 let cube3d = null;
+let threeLoaded = false;
+
+// Initialize 3D cubes after Three.js loads
+async function init3DCubes() {
+  if (threeLoaded) return;
+  const loaded = await loadThreeJS();
+  if (!loaded) return;
+  threeLoaded = true;
+
+  // Input cube
+  const inputContainer = document.getElementById('cube-3d-input');
+  if (inputContainer) {
+    cube3d = new RubiksCube3D(inputContainer);
+    window.cube3d = cube3d;
+  }
+
+  // Visualizer cube (created when needed in setupVisualizer)
+}
 
 function initColorPalette() {
   const palette = document.getElementById('color-palette');
@@ -805,15 +858,19 @@ function setupVisualizer(initialState, moves) {
   const section = document.getElementById('visualizer-section');
   section.hidden = false;
 
-  // Initialize 3D cube if not exists
-  if (!cube3d) {
+  // Initialize visualizer 3D cube if not exists
+  if (!window.cube3dVisualizer) {
     const container = document.getElementById('cube-3d-container');
-    cube3d = new RubiksCube3D(container);
-    window.cube3d = cube3d; // Global for debugging
+    if (container && THREE && OrbitControls) {
+      window.cube3dVisualizer = new RubiksCube3D(container);
+    }
   }
 
   animState = { initialState: cloneState(initialState), moves, currentStep: 0, playing: false, timer: null };
-  cube3d.setState(initialState, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
+  const visualizer = window.cube3dVisualizer || cube3d;
+  if (visualizer) {
+    visualizer.setState(initialState, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
+  }
 
   document.getElementById('play-btn').onclick = playAnimation;
   document.getElementById('pause-btn').onclick = pauseAnimation;
@@ -825,6 +882,10 @@ function setupVisualizer(initialState, moves) {
 }
 
 function hideVisualizer() { document.getElementById('visualizer-section').hidden = true; }
+
+function getVisualizer() {
+  return window.cube3dVisualizer || cube3d;
+}
 
 function playAnimation() {
   if (animState.playing) return;
@@ -850,7 +911,8 @@ function stepAnimation() {
   const move = animState.moves[animState.currentStep];
   animState.initialState = applyMove(animState.initialState, MOVE_TABLES[move]);
   const faceToColor = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
-  cube3d.setState(animState.initialState, faceToColor);
+  const visualizer = getVisualizer();
+  if (visualizer) visualizer.setState(animState.initialState, faceToColor);
   animState.currentStep++;
   if (animState.currentStep >= animState.moves.length) pauseAnimation();
 }
@@ -870,6 +932,7 @@ window.app = { onStickerChange };
 
 document.addEventListener('DOMContentLoaded', () => {
   initColorPalette();
+  init3DCubes();
 
   document.getElementById('solve-btn').addEventListener('click', solve);
   document.getElementById('reset-btn').addEventListener('click', resetCube);
@@ -891,11 +954,4 @@ document.addEventListener('DOMContentLoaded', () => {
     const num = parseInt(e.key);
     if (num >= 1 && num <= 6) { selectColor(colorKeys[num - 1]); }
   });
-
-  // Initialize 3D cube for input section too
-  const inputContainer = document.getElementById('cube-3d-input');
-  if (inputContainer) {
-    cube3d = new RubiksCube3D(inputContainer);
-    window.cube3d = cube3d;
-  }
 });
