@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Rubik's Cube & Puzzle Solver Suite - Canvas 2D, No Dependencies">
+  <meta name="theme-color" content="#0a0f1a">
+  <title>Rubik's Cube & Puzzle Solver</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="header-badge">Solver Suite v3.0</span>
+      <h1>Rubik's Cube & Puzzle Solver</h1>
+      <p class="subtitle">Interactive Canvas 2D Web Games • No Dependencies • All Algorithms</p>
+    </header>
+
+    <main>
+      <section class="game-cards">
+        <div class="card" onclick="window.location.href='docs/index.html'" role="button" tabindex="0" aria-label="Rubik's Cube Solver">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4zm12 2c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5t1.5-.5c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-9-3h18v2H12zM5.75 9.75c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m5.25 12c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83"/>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Rubik's Cube Solver</h3>
+            <p class="card-desc">54 stickers → 40 numbers (Cubie Representation) • Kociemba Two-Phase Algorithm • Canvas 2D • Click & drag to interact</p>
+          </div>
+        </div>
+
+        <div class="card" onclick="window.location.href='docs/cube.html'" role="button" tabindex="0" aria-label="Cube Algorithms & Methods">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4zm12 2c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5t1.5-.5c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-9-3h18v2H12zM5.75 9.75c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m5.25 12c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m-4.5 0c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83m0-5c-.96 0-1.73.8-1.73 1.73s.77 1.73 1.73 1.73t1.73-.73c.38-.5.5-1.23.5-1.83s-.12-1.33-.5-1.83"/>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Cube Algorithms & Methods</h3>
+            <p class="card-desc">CFOP (Fridrich), Beginner Method, Roux, ZZ, R2 • OLL/PLL tables • 41 algorithms • Method guides with step-by-step instructions</p>
+          </div>
+        </div>
+
+        <div class="card" onclick="window.location.href='docs/sudoku.html'" role="button" tabindex="0" aria-label="Sudoku Solver">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M3 3v18h18v-3.06c0-.7-.19-1.35-.53-1.97L9.44 5.95c-.47-.47-1.03-.7-1.61-.7-1.06 0-1.43.35-1.43.88v1.39c0 .53.27 1.02.72 1.13l5.28 5.26-1.42 2.05c-.31.45-.68.73-1.09.73-.71 0-1.08-.58-.59-1.29l3.17-4.16.07-.12c.16-.25.23-.57.23-.88v-1.44c0-.7.18-1.29.53-1.97L18.06 4.3c-.47-.47-.95-.7-1.45-.7-1.06 0-1.43.35-1.43.88v3.06H3z"/>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Sudoku Solver</h3>
+            <p class="card-desc">9×9 grid backtracking solver • Click cells to enter numbers • Auto-solve • Puzzle generator • Difficulty levels</p>
+          </div>
+        </div>
+
+        <div class="card" onclick="window.location.href='docs/tictactoe.html'" role="button" tabindex="0" aria-label="Tic-Tac-Toe AI">
+          <div class="card-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor"><path d="M4 4h16v16H4zm3 3v10h14v-10H7zm3 3v10h10v-10H10z"/>
+            </svg>
+          </div>
+          <div class="card-content">
+            <h3>Tic-Tac-Toe</h3>
+            <p class="card-desc">Play against Minimax AI • 3×3 grid • AI difficulty levels • Score tracking</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built with <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">Cubie Representation Solver</a> • 54 stickers → 40 numbers • Canvas 2D Web Games • No external dependencies</p>
+      <div class="footer-links">
+        <a href="https://github.com/doofenshmirtz-hub/solver" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="#" id="about-link">About</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
