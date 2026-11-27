@@ -89,7 +89,7 @@ const moveDefs = {
   R: { cp: [4,1,2,0,7,5,6,3], co: [2,0,0,1,1,0,0,2], ep: [8,1,2,3,11,5,6,7,4,9,10,0], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
   F: { cp: [1,5,2,3,0,4,6,7], co: [1,2,0,0,2,1,0,0], ep: [0,9,2,3,4,8,6,7,1,5,10,11], eo: [0,1,0,0,0,1,0,0,1,1,0,0] },
   D: { cp: [0,1,2,3,5,6,7,4], co: [0,0,0,0,0,0,0,0], ep: [0,1,2,3,5,6,7,4,8,9,10,11], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
-  L: { cp: [0,2,6,3,4,1,5,7], co: [0,1,2,0,0,2,1,0], ep: [0,1,10,3,4,5,9,7,8,2,11,6], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
+  L: { cp: [0,2,6,3,4,1,5,7], co: [0,1,2,0,0,2,1,0], ep: [0,1,11,3,4,5,9,7,8,2,10,6], eo: [0,0,0,0,0,0,0,0,0,0,0,0] },
   B: { cp: [0,1,3,7,4,5,2,6], co: [0,0,1,2,0,0,2,1], ep: [0,1,2,11,4,5,6,10,8,9,3,7], eo: [0,0,0,1,0,0,0,1,0,0,1,1] },
 };
 
@@ -365,6 +365,14 @@ class CubeRenderer {
   setColor(f, i, c) { this.stickerColors[f + ':' + i] = c; this.draw(); }
   setAll(colors) { for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, colors[f]); }
   setState(s, ct) { const st = cubieToStickers(s, ct); for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, st[f][i]); }
+  setFacelets(facelets, faceToColor) {
+    if (typeof facelets !== 'string' || facelets.length !== 54) throw new Error('Invalid facelet snapshot');
+    for (let f = 0; f < FACE_ORDER.length; f++) {
+      const face = FACE_ORDER[f];
+      for (let i = 0; i < 9; i++) this.stickerColors[face + ':' + i] = faceToColor[facelets[f * 9 + i]];
+    }
+    this.draw();
+  }
 
   onMove(e) {
     const r = this.el.getBoundingClientRect();
@@ -593,7 +601,8 @@ async function solve() {
     solutionMoves = result.moves;
 
     showOutput(solutionMoves, elapsed, result.verified);
-    setupVisualizer(result.snapshots[0], solutionMoves, result.snapshots.slice(1));
+    const faceToColor = Object.fromEntries(Object.entries(validation.colorToFace).map(([color, face]) => [face, color]));
+    setupVisualizer(result.snapshots[0], solutionMoves, result.snapshots.slice(1), faceToColor);
     showToast('Verified solution: ' + solutionMoves.length + ' moves (' + elapsed + 'ms)', 'success');
   } catch (error) {
     showErr(error.message);
@@ -638,12 +647,11 @@ function showErr(msg) {
 function hideOutput() { document.getElementById('output-section').hidden = true; }
 function hideVisualizer() { document.getElementById('visualizer-section').hidden = true; }
 
-function setupVisualizer(initialState, moves, verifiedStates = []) {
+function setupVisualizer(initialFacelets, moves, verifiedStates = [], faceToColor = { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' }) {
   document.getElementById('visualizer-section').hidden = false;
-  const colorMap = { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B };
-  if (visualizerCube) visualizerCube.setState(initialState, colorMap);
+  if (visualizerCube) visualizerCube.setFacelets(initialFacelets, faceToColor);
 
-  animState = { state: initialState, states: verifiedStates, moves, currentStep: 0, playing: false, timer: null };
+  animState = { faceToColor, states: verifiedStates, moves, currentStep: 0, playing: false, timer: null };
 
   document.getElementById('play-btn').onclick = playAnimation;
   document.getElementById('pause-btn').onclick = pauseAnimation;
@@ -675,8 +683,8 @@ function pauseAnimation() {
 
 function stepAnimation() {
   if (animState.currentStep >= animState.moves.length) return;
-  animState.state = animState.states[animState.currentStep];
-  if (visualizerCube) visualizerCube.setState(animState.state, { W: Face.U, Y: Face.D, R: Face.R, O: Face.L, G: Face.F, B: Face.B });
+  const facelets = animState.states[animState.currentStep];
+  if (visualizerCube) visualizerCube.setFacelets(facelets, animState.faceToColor);
   animState.currentStep++;
   if (animState.currentStep >= animState.moves.length) pauseAnimation();
 }
