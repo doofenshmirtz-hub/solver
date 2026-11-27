@@ -418,28 +418,35 @@ function phase1Search(state: CubeState, maxDepth: number): Move[] | null {
 
 /** Solve a cube state, returns move sequence */
 export function solveCube(state: CubeState): Move[] {
-  // Phase 1: Solve to G1
-  console.log('Phase 1: Solving to G1 subgroup...');
+  // Phase 1 alone only reaches the G1 subgroup; it is not a complete solution.
+  // Until Phase 2 pruning/transition tables are implemented, fail closed rather
+  // than returning a move sequence that may leave the cube unsolved.
   let phase1Moves: Move[] | null = null;
   for (let depth = 0; depth <= 12; depth++) {
     phase1Moves = phase1Search(state, depth);
-    if (phase1Moves) {
-      console.log(`Phase 1 solved in ${phase1Moves.length} moves: ${phase1Moves.join(' ')}`);
-      break;
-    }
+    if (phase1Moves) break;
   }
-  if (!phase1Moves) throw new Error('Phase 1 failed');
+  if (!phase1Moves) {
+    throw new Error('No Phase 1 solution found within the configured depth limit.');
+  }
 
-  // Apply Phase 1 moves to get to G1 state
-  let g1State = applyMoves(state, phase1Moves);
+  const phase1State = applyMoves(state, phase1Moves);
+  if (!isInG1Subgroup(phase1State)) {
+    throw new Error('Internal solver error: Phase 1 result is not in the G1 subgroup.');
+  }
 
-  // Phase 2: Solve within G1 (simplified - just use a basic solver for now)
-  // For a full implementation, we'd use the Phase 2 pruning tables
-  console.log('Phase 2: Solving within G1...');
-  // For now, just return Phase 1 moves (which may not fully solve)
-  // A complete Phase 2 would be quite involved
+  throw new Error(
+    'The TypeScript solver is not yet a complete 3×3 solver: Phase 2 is not implemented. ' +
+    'No unverified solution was returned. Use the browser 3×3 solver only for states it can solve and verify.'
+  );
+}
 
-  return phase1Moves;
+function isInG1Subgroup(state: CubeState): boolean {
+  const cornerOriented = state.cornerOri.every(value => value === 0);
+  const edgeOriented = state.edgeOri.every(value => value === 0);
+  const sliceEdges = new Set([8, 9, 10, 11]);
+  const sliceInMiddle = [8, 9, 10, 11].every(position => sliceEdges.has(state.edgePos[position]));
+  return cornerOriented && edgeOriented && sliceInMiddle;
 }
 
 /** Verify a solution */
