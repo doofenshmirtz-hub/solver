@@ -69,13 +69,13 @@ function generateMoveTables(): Record<string, MoveTable> {
       edgeOri: new Uint8Array(def.edgeOriDelta),
     };
 
-    // Prime move (inverse) - apply base move 3 times
-    const primeCornerPos = applyPermutation(def.cornerPerm, def.cornerPerm, def.cornerPerm);
-    const primeCornerOri = addOri(applyOri(def.cornerPerm, def.cornerOriDelta),
-                                   addOri(applyOri(def.cornerPerm, def.cornerOriDelta), def.cornerOriDelta));
-    const primeEdgePos = applyPermutation(def.edgePerm, def.edgePerm, def.edgePerm);
-    const primeEdgeOri = addOri(applyOri(def.edgePerm, def.edgeOriDelta),
-                                addOri(applyOri(def.edgePerm, def.edgeOriDelta), def.edgeOriDelta));
+    // Prime move: construct the exact inverse permutation and orientation delta.
+    // For state'[i] = state[p[i]] and ori'[i] = ori[p[i]] + d[i],
+    // the inverse uses q = p^-1 and deltaInverse[i] = -d[q[i]].
+    const primeCornerPos = invertPermutation(def.cornerPerm);
+    const primeCornerOri = inverseOrientation(primeCornerPos, def.cornerOriDelta, 3);
+    const primeEdgePos = invertPermutation(def.edgePerm);
+    const primeEdgeOri = inverseOrientation(primeEdgePos, def.edgeOriDelta, 2);
 
     tables[baseMove + "'"] = {
       cornerPos: new Uint8Array(primeCornerPos),
@@ -84,11 +84,11 @@ function generateMoveTables(): Record<string, MoveTable> {
       edgeOri: new Uint8Array(primeEdgeOri),
     };
 
-    // Double move - apply base move 2 times
+    // Double move: apply the base move twice.
     const doubleCornerPos = applyPermutation(def.cornerPerm, def.cornerPerm);
-    const doubleCornerOri = addOri(applyOri(def.cornerPerm, def.cornerOriDelta), def.cornerOriDelta);
+    const doubleCornerOri = addOri(applyOri(def.cornerPerm, def.cornerOriDelta), def.cornerOriDelta, 3);
     const doubleEdgePos = applyPermutation(def.edgePerm, def.edgePerm);
-    const doubleEdgeOri = addOri(applyOri(def.edgePerm, def.edgeOriDelta), def.edgeOriDelta);
+    const doubleEdgeOri = addOri(applyOri(def.edgePerm, def.edgeOriDelta), def.edgeOriDelta, 2);
 
     tables[baseMove + '2'] = {
       cornerPos: new Uint8Array(doubleCornerPos),
@@ -99,6 +99,18 @@ function generateMoveTables(): Record<string, MoveTable> {
   }
 
   return tables;
+}
+
+/** Return the inverse of a destination-to-source permutation. */
+function invertPermutation(permutation: number[]): number[] {
+  const inverse = new Array<number>(permutation.length);
+  for (let i = 0; i < permutation.length; i++) inverse[permutation[i]] = i;
+  return inverse;
+}
+
+/** Orientation delta for the inverse of a move (mod 3 for corners, mod 2 for edges). */
+function inverseOrientation(inversePermutation: number[], delta: number[], mod: number): number[] {
+  return inversePermutation.map(sourcePosition => (mod - delta[sourcePosition]) % mod);
 }
 
 /** Apply permutation p1 then p2 */
