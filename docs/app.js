@@ -499,6 +499,8 @@ function initApp() {
     appReady = true;
   }, 100);
 
+  initCameraInput();
+
   // Event listeners
   const solveBtn = document.getElementById('solve-btn');
   const resetBtn = document.getElementById('reset-btn');
@@ -895,3 +897,113 @@ document.addEventListener('DOMContentLoaded', () => {
 window.app = { onStickerChange, solveSudoku };
 
 window.app = { onStickerChange, solveSudoku };
+
+// -----------------------------------------------------------------------------
+// CAMERA INPUT - Guided 3x3 face capture with manual correction
+// -----------------------------------------------------------------------------
+let cameraStream = null;
+
+function initCameraInput() {
+  const openButton = document.getElementById('camera-open');
+  const closeButton = document.getElementById('camera-close');
+  const captureButton = document.getElementById('camera-capture');
+  const panel = document.getElementById('camera-panel');
+  const video = document.getElementById('camera-video');
+  const canvas = document.getElementById('camera-canvas');
+  const faceSelect = document.getElementById('camera-face');
+  const status = document.getElementById('camera-status');
+
+  if (!openButton || !video || !canvas || !captureButton || !panel) return;
+
+  openButton.addEventListener('click', async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      showToast('Camera access is unavailable in this browser.', 'error');
+      return;
+    }
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false
+      });
+      video.srcObject = cameraStream;
+      await video.play();
+      panel.hidden = false;
+      status.textContent = 'Camera ready. Select the face shown and capture it.';
+      openButton.hidden = true;
+    } catch (error) {
+      status.textContent = 'Camera permission was denied or no camera is available.';
+      showToast(status.textContent, 'error');
+    }
+  });
+
+  const closeCamera = () => {
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+    video.srcObject = null;
+    panel.hidden = true;
+    openButton.hidden = false;
+    status.textContent = 'Camera is off.';
+  };
+
+  closeButton?.addEventListener('click', closeCamera);
+  captureButton.addEventListener('click', () => {
+    if (!video.videoWidth || !video.videoHeight) {
+      status.textContent = 'Wait until the camera preview is ready.';
+      return;
+    }
+
+    const width = video.videoWidth;
+    const height = video.videoHeight;
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(video, 0, 0, width, height);
+
+    const palette = {
+      W: [254, 254, 254],
+      Y: [253, 224, 71],
+      R: [248, 113, 113],
+      O: [251, 146, 60],
+      G: [74, 222, 128],
+      B: [96, 165, 250]
+    };
+    const sampleColor = (x, y) => {
+      const radius = Math.max(2, Math.floor(Math.min(width, height) * 0.008));
+      const data = context.getImageData(
+        Math.max(0, Math.floor(x) - radius),
+        Math.max(0, Math.floor(y) - radius),
+        Math.min(radius * 2 + 1, width - Math.max(0, Math.floor(x) - radius)),
+        Math.min(radius * 2 + 1, height - Math.max(0, Math.floor(y) - radius))
+      ).data;
+      let red = 0, green = 0, blue = 0, count = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        red += data[i]; green += data[i + 1]; blue += data[i + 2]; count++;
+      }
+      red /= count; green /= count; blue /= count;
+      let best = 'W', bestDistance = Infinity;
+      for (const [color, rgb] of Object.entries(palette)) {
+        const distance = (red-rgb[0])**2 + (green-rgb[1])**2 + (blue-rgb[2])**2;
+        if (distance < bestDistance) { bestDistance = distance; best = color; }
+      }
+      return best;
+    };
+
+    const captured = [];
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 3; col++) {
+        captured.push(sampleColor((col + 0.5) * width / 3, (row + 0.5) * height / 3));
+      }
+    }
+
+    const face = faceSelect.value;
+    currentStickers[face] = captured;
+    if (inputCube) for (let i = 0; i < 9; i++) inputCube.setColor(face, i, captured[i]);
+    checkReady();
+    status.textContent = face + ' face captured. Select another face or correct stickers manually.';
+    showToast(face + ' face captured — please review the detected colors.');
+  });
+
+  window.addEventListener('pagehide', () => {
+    if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+  });
+}
