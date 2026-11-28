@@ -286,196 +286,23 @@ function cubieToStickers(state, colorToFace) {
 // -----------------------------------------------------------------------------
 
 class CubeRenderer {
-  constructor(el, pickerColor = 'W') {
-    this.el = el;
-    this.pickerColor = pickerColor;
-    this.canvas = document.createElement('canvas');
-    this.ctx = this.canvas.getContext('2d');
-    this.el.appendChild(this.canvas);
-    this.stickerColors = {};
-    this.hovered = null;
-    this.dragging = false;
-    this.last = { x: 0, y: 0 };
-    this.angle = { x: 0.5, y: 0.5 };
-    this.dist = 5;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
-    this.ready = false;
-    this.resizeObserver = null;
-    this.init();
+  constructor(el, pickerColor = 'W') { this.el=el; this.pickerColor=pickerColor; this.stickerColors={}; this.buildNet(); }
+  buildNet() {
+    this.el.innerHTML=''; this.el.classList.add('cube-net');
+    const pos={U:['4 / span 3','1 / span 3'],L:['1 / span 3','4 / span 3'],F:['4 / span 3','4 / span 3'],R:['7 / span 3','4 / span 3'],B:['10 / span 3','4 / span 3'],D:['4 / span 3','7 / span 3']};
+    for(const face of FACE_ORDER){
+      const box=document.createElement('div'); box.className='cube-net-face'; box.style.gridColumn=pos[face][0]; box.style.gridRow=pos[face][1];
+      const label=document.createElement('span'); label.className='cube-net-label'; label.textContent=({U:'U · UP',R:'R · RIGHT',F:'F · FRONT',D:'D · DOWN',L:'L · LEFT',B:'B · BACK'})[face]; box.appendChild(label);
+      for(let i=0;i<9;i++){const b=document.createElement('button');b.type='button';b.className='cube-net-sticker';b.dataset.face=face;b.dataset.index=String(i);b.setAttribute('aria-label',face+' face sticker '+(i+1));b.addEventListener('click',()=>{if(window.app)window.app.onStickerChange(face,i,this.pickerColor);this.setColor(face,i,this.pickerColor);});box.appendChild(b);}
+      this.el.appendChild(box);
+    } this.draw();
   }
-
-  init() {
-    this.buildGeometry();
-    this.canvas.style.width = '100%';
-    this.canvas.style.height = '100%';
-    this.canvas.style.touchAction = 'none';
-    this.canvas.addEventListener('mousemove', e => this.onMove(e));
-    this.canvas.addEventListener('click', e => this.onClick(e));
-    this.canvas.addEventListener('pointerdown', e => this.onDown(e));
-    this.canvas.addEventListener('pointerup', e => this.onUp(e));
-    this.canvas.addEventListener('pointercancel', e => this.onUp(e));
-    this.canvas.addEventListener('pointermove', e => this.onPointerMove(e));
-    this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
-    this.canvas.addEventListener('contextmenu', e => e.preventDefault());
-
-    const resize = () => this.resize();
-    if ('ResizeObserver' in window) {
-      this.resizeObserver = new ResizeObserver(resize);
-      this.resizeObserver.observe(this.el);
-    } else {
-      window.addEventListener('resize', resize);
-    }
-    requestAnimationFrame(() => { this.resize(); this.ready = true; this.draw(); });
-  }
-
-  resize() {
-    const rect = this.el.getBoundingClientRect();
-    const w = Math.max(1, rect.width);
-    const h = Math.max(1, rect.height);
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const pixelWidth = Math.round(w * dpr);
-    const pixelHeight = Math.round(h * dpr);
-    if (this.canvas.width !== pixelWidth || this.canvas.height !== pixelHeight || this.dpr !== dpr) {
-      this.dpr = dpr;
-      this.canvas.width = pixelWidth;
-      this.canvas.height = pixelHeight;
-      this.draw();
-    }
-    return { w, h, dpr };
-  }
-
-  buildGeometry() {
-    this.geom = {};
-    const sz = 0.58, gap = 0.03, off = 1.01;
-    const config = {
-      U: { normal: [0, 1, 0], rot: [0, 0, 0], pos: [0, 1.05, 0] },
-      D: { normal: [0, -1, 0], rot: [Math.PI, 0, 0], pos: [0, -1.05, 0] },
-      F: { normal: [0, 0, 1], rot: [-Math.PI / 2, 0, 0], pos: [0, 0, 1.05] },
-      B: { normal: [0, 0, -1], rot: [Math.PI / 2, 0, 0], pos: [0, 0, -1.05] },
-      R: { normal: [1, 0, 0], rot: [0, 0, -Math.PI / 2], pos: [1.05, 0, 0] },
-      L: { normal: [-1, 0, 0], rot: [0, 0, Math.PI / 2], pos: [-1.05, 0, 0] },
-    };
-
-    for (const f of FACE_ORDER) {
-      const cfg = config[f];
-      this.geom[f] = [];
-      for (let r = 0; r < 3; r++) {
-        for (let c = 0; c < 3; c++) {
-          const i = r * 3 + c;
-          const st = -sz - gap;
-          let x = c * (sz + gap) + st, y = -r * (sz + gap) - st, z = off / 2;
-          const [rx, ry, rz] = cfg.rot;
-          if (rz) { const cs = Math.cos(rz), sn = Math.sin(rz); [x, y] = [x * cs - y * sn, x * sn + y * cs]; }
-          if (ry) { const cs = Math.cos(ry), sn = Math.sin(ry); [x, z] = [x * cs + z * sn, -x * sn + z * cs]; }
-          if (rx) { const cs = Math.cos(rx), sn = Math.sin(rx); [y, z] = [y * cs - z * sn, y * sn + z * cs]; }
-          x += cfg.pos[0]; y += cfg.pos[1]; z += cfg.pos[2];
-          this.geom[f].push({ i, r, c, face: f, world: { x, y, z }, normal: cfg.normal, sz, center: r === 1 && c === 1 });
-        }
-      }
-    }
-  }
-
-  getColor(f, i) { return this.stickerColors[f + ':' + i] || this.defaultColor(f); }
-  defaultColor(f) { return { U: 'W', R: 'R', F: 'G', D: 'Y', L: 'O', B: 'B' }[f]; }
-  setColor(f, i, c) { this.stickerColors[f + ':' + i] = c; this.draw(); }
-  setAll(colors) { for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, colors[f]); }
-  setState(s, ct) { const st = cubieToStickers(s, ct); for (const f of FACE_ORDER) for (let i = 0; i < 9; i++) this.setColor(f, i, st[f][i]); }
-  setFacelets(facelets, faceToColor) {
-    if (typeof facelets !== 'string' || facelets.length !== 54) throw new Error('Invalid facelet snapshot');
-    for (let f = 0; f < FACE_ORDER.length; f++) {
-      const face = FACE_ORDER[f];
-      for (let i = 0; i < 9; i++) this.stickerColors[face + ':' + i] = faceToColor[facelets[f * 9 + i]];
-    }
-    this.draw();
-  }
-
-  onMove(e) {
-    const r = this.el.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top;
-    this.hovered = this.hitTest(x, y);
-    this.canvas.style.cursor = this.hovered ? 'pointer' : 'grab';
-    this.draw();
-  }
-
-  onClick(e) {
-    if (this.dragging) return;
-    const r = this.el.getBoundingClientRect();
-    const hit = this.hitTest(e.clientX - r.left, e.clientY - r.top);
-    if (hit && window.app) window.app.onStickerChange(hit.face, hit.i, this.pickerColor);
-  }
-
-  onDown(e) { this.dragging = true; this.last = { x: e.clientX, y: e.clientY }; this.canvas.style.cursor = 'grabbing'; }
-  onUp(e) { this.dragging = false; this.canvas.style.cursor = 'grab'; }
-  onPointerMove(e) {
-    if (!this.dragging) return;
-    const dx = e.clientX - this.last.x, dy = e.clientY - this.last.y;
-    this.last = { x: e.clientX, y: e.clientY };
-    this.angle.y -= dx * 0.01;
-    this.angle.x += dy * 0.01;
-    this.angle.x = Math.max(-1.47, Math.min(1.47, this.angle.x));
-    this.draw();
-  }
-  onWheel(e) { e.preventDefault(); this.dist += e.deltaY * 0.01; this.dist = Math.max(3, Math.min(10, this.dist)); this.draw(); }
-
-  hitTest(x, y) {
-    const r = this.el.getBoundingClientRect();
-    const cx = r.width / 2, cy = r.height / 2;
-    const sc = Math.min(r.width, r.height) / 2 / this.dist;
-    const camX = this.dist * Math.sin(this.angle.y) * Math.cos(this.angle.x);
-    const camY = this.dist * Math.sin(this.angle.x);
-    const camZ = this.dist * Math.cos(this.angle.y) * Math.cos(this.angle.x);
-    const rdx = (x - cx) / sc - camX, rdy = (cy - y) / sc - camY, rdz = -camZ;
-    const rl = Math.sqrt(rdx * rdx + rdy * rdy + rdz * rdz);
-    const rdxn = rdx / rl, rdyn = rdy / rl, rdzn = rdz / rl;
-    let best = null, bd = Infinity;
-    for (const f of FACE_ORDER) for (const s of this.geom[f]) {
-      const n = s.normal; const denom = rdxn * n[0] + rdyn * n[1] + rdzn * n[2];
-      if (Math.abs(denom) < 0.001) continue;
-      const t = -(rdxn * s.world.x + rdyn * s.world.y + rdzn * s.world.z) / denom;
-      if (t < 0) continue;
-      const ix = rdxn * t, iy = rdyn * t, iz = rdzn * t;
-      const lx = ix - s.world.x, ly = iy - s.world.y;
-      const hs = s.sz / 2 + 0.01;
-      if (Math.abs(lx) <= hs && Math.abs(ly) <= hs && t < bd) { bd = t; best = s; }
-    }
-    return best;
-  }
-
-  draw() {
-    if (!this.ctx || !this.canvas.width || !this.canvas.height) return;
-    const ctx = this.ctx, w = this.canvas.width, h = this.canvas.height;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    const cx = w / 2, cy = h / 2, sc = Math.min(w, h) / 2 / this.dist;
-
-    const vx = -this.dist * Math.sin(this.angle.y) * Math.cos(this.angle.x);
-    const vy = -this.dist * Math.sin(this.angle.x);
-    const vz = -this.dist * Math.cos(this.angle.y) * Math.cos(this.angle.x);
-
-    const list = [];
-    for (const f of FACE_ORDER) for (const s of this.geom[f]) {
-      const dot = s.normal[0] * vx + s.normal[1] * vy + s.normal[2] * vz;
-      if (dot <= 0) continue;
-      const depth = s.world.x * vx + s.world.y * vy + s.world.z * vz;
-      list.push({ s, depth, dot });
-    }
-    list.sort((a, b) => b.depth - a.depth);
-
-    for (const { s, dot } of list) {
-      const x = s.world.x * sc + cx, y = -s.world.y * sc + cy, sz = s.sz * sc;
-      const col = this.getColor(s.face, s.i);
-      const l = 0.5 + 0.5 * dot;
-      const rgb = hexToRgb(COLOR_CSS[col]);
-      ctx.fillStyle = `rgb(${Math.floor(rgb.r * l)},${Math.floor(rgb.g * l)},${Math.floor(rgb.b * l)})`;
-      ctx.strokeStyle = '#1a1a2e';
-      ctx.lineWidth = Math.max(1, sz * 0.03);
-      roundRect(ctx, x - sz / 2, y - sz / 2, sz, sz, Math.max(2, sz * 0.08));
-      ctx.fill();
-      ctx.stroke();
-      if (this.hovered === s) { ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = Math.max(2, sz * 0.05); ctx.stroke(); }
-      if (s.center) { ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 2; ctx.strokeRect(x - sz / 2 - 2, y - sz / 2 - 2, sz + 4, sz + 4); }
-    }
-  }
+  getColor(f,i){return this.stickerColors[f+':'+i]||({U:'W',R:'R',F:'G',D:'Y',L:'O',B:'B'})[f];}
+  setColor(f,i,c){this.stickerColors[f+':'+i]=c;const e=this.el.querySelector('[data-face="'+f+'"] [data-index="'+i+'"]');if(e){e.style.backgroundColor=COLOR_CSS[c];e.dataset.color=c;e.setAttribute('aria-label',f+' face sticker '+(i+1)+', '+c);}}
+  setAll(colors){for(const f of FACE_ORDER)for(let i=0;i<9;i++)this.setColor(f,i,colors[f]);}
+  setState(state,colorToFace){const stickers=cubieToStickers(state,colorToFace);for(const f of FACE_ORDER)for(let i=0;i<9;i++)this.setColor(f,i,stickers[f][i]);}
+  setFacelets(facelets,faceToColor){if(typeof facelets!=='string'||facelets.length!==54)throw new Error('Invalid facelet snapshot');for(let f=0;f<6;f++)for(let i=0;i<9;i++)this.setColor(FACE_ORDER[f],i,faceToColor[facelets[f*9+i]]);}
+  draw(){for(const f of FACE_ORDER)for(let i=0;i<9;i++){const e=this.el.querySelector('[data-face="'+f+'"] [data-index="'+i+'"]');if(e){const c=this.getColor(f,i);e.style.backgroundColor=COLOR_CSS[c];e.dataset.color=c;}}}
 }
 
 // -----------------------------------------------------------------------------
@@ -743,8 +570,7 @@ function solveSudoku(board) {
   }
 
   const solution = [...board];
-  backtrack(solution);
-  return solution;
+  return backtrack(solution) ? solution : null;
 }
 
 // -----------------------------------------------------------------------------
@@ -830,53 +656,27 @@ function tttUpdateStatus(m) { const el = document.getElementById('ttt-status'); 
 // SUDOKU UI - 9x9 Grid with Backtracking
 // -----------------------------------------------------------------------------
 
-let sudokuState = { board: Array(81).fill(0), given: Array(81).fill(false), selected: -1 };
-
-function sudokuInit() {
-  const grid = document.getElementById('sudoku-grid'); if (!grid) return; grid.innerHTML = '';
-  for (let i = 0; i < 81; i++) {
-    const cell = document.createElement('div'); cell.className = 'sudoku-cell'; cell.dataset.index = i; cell.textContent = sudokuState.board[i] || '';
-    if (sudokuState.given[i]) cell.classList.add('given'); cell.onclick = () => sudokuSelectCell(i); grid.appendChild(cell);
-  }
-  const solveButton = document.getElementById('sudoku-solve');
-  if (solveButton) solveButton.onclick = sudokuSolve;
-  const clearButton = document.getElementById('sudoku-clear');
-  if (clearButton) clearButton.onclick = sudokuClear;
-  const newButton = document.getElementById('sudoku-new');
-  if (newButton) newButton.onclick = sudokuNew;
-  const validateButton = document.getElementById('sudoku-validate');
-  if (validateButton) validateButton.onclick = sudokuValidate;
-  document.onkeydown = sudokuHandleKeydown;
+let sudokuState = { board:Array(81).fill(0), given:Array(81).fill(false), selected:-1 };
+function sudokuInit(){
+  document.getElementById('sudoku-solve')?.addEventListener('click',sudokuSolve);
+  document.getElementById('sudoku-clear')?.addEventListener('click',sudokuClear);
+  document.getElementById('sudoku-new')?.addEventListener('click',sudokuNew);
+  document.getElementById('sudoku-validate')?.addEventListener('click',sudokuValidate);
+  document.querySelectorAll('[data-sudoku-number]').forEach(b=>b.addEventListener('click',()=>sudokuEnterNumber(Number(b.dataset.sudokuNumber))));
+  document.addEventListener('keydown',sudokuHandleKeydown); sudokuRender(); sudokuUpdateControls();
+  sudokuSetStatus('Enter the puzzle from your book or screen, then tap Solve Puzzle.');
 }
-
-function sudokuSelectCell(i) { if (sudokuState.given[i]) return; document.querySelectorAll('.sudoku-cell').forEach(c => c.classList.remove('selected')); document.querySelector(`.sudoku-cell[data-index="${i}"]`)?.classList.add('selected'); sudokuState.selected = i; }
-
-function sudokuHandleKeydown(e) {
-  if (sudokuState.selected === -1) return;
-  const n = parseInt(e.key); if (n >= 1 && n <= 9) { sudokuState.board[sudokuState.selected] = n; document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`).textContent = n; sudokuValidateCell(sudokuState.selected); }
-  else if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { sudokuState.board[sudokuState.selected] = 0; document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`).textContent = ''; document.querySelector(`.sudoku-cell[data-index="${sudokuState.selected}"]`)?.classList.remove('error'); }
-  else if (e.key === 'ArrowUp' && sudokuState.selected >= 9) sudokuSelectCell(sudokuState.selected - 9);
-  else if (e.key === 'ArrowDown' && sudokuState.selected < 72) sudokuSelectCell(sudokuState.selected + 9);
-  else if (e.key === 'ArrowLeft' && sudokuState.selected % 9 !== 0) sudokuSelectCell(sudokuState.selected - 1);
-  else if (e.key === 'ArrowRight' && sudokuState.selected % 9 !== 8) sudokuSelectCell(sudokuState.selected + 1);
-}
-
-function sudokuValidateCell(i) {
-  const n = sudokuState.board[i]; if (n === 0) return true;
-  const r = Math.floor(i / 9), c = i % 9; let ok = true;
-  for (let j = 0; j < 9; j++) { if (j !== c && sudokuState.board[r * 9 + j] === n) ok = false; if (j !== r && sudokuState.board[j * 9 + c] === n) ok = false; }
-  const br = Math.floor(r / 3) * 3, bc = Math.floor(c / 3) * 3;
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) { const idx = (br + r) * 9 + (bc + c); if (idx !== i && sudokuState.board[idx] === n) ok = false; }
-  const cell = document.querySelector(`.sudoku-cell[data-index="${i}"]`); if (cell) cell.classList.toggle('error', !ok); return ok;
-}
-
-function sudokuValidate() { let ok = true; for (let i = 0; i < 81; i++) if (sudokuState.board[i] !== 0 && !sudokuValidateCell(i)) ok = false; document.getElementById('sudoku-status').textContent = ok ? '✓ Valid so far' : '✗ Conflicts found'; document.getElementById('sudoku-status').style.color = ok ? 'var(--success)' : 'var(--danger)'; }
-
-function sudokuSolve() { const sol = solveSudoku(sudokuState.board); sudokuState.board = sol; sudokuState.given = Array(81).fill(false); sudokuRender(); document.getElementById('sudoku-status').textContent = '✓ Solved!'; document.getElementById('sudoku-status').style.color = 'var(--success)'; }
-function sudokuClear() { sudokuState.board = Array(81).fill(0); sudokuState.given = Array(81).fill(false); sudokuRender(); document.getElementById('sudoku-status').textContent = ''; }
-function sudokuNew() { const base = [5,3,4,6,7,8,9,1,2,6,7,2,1,9,5,3,4,8,1,9,8,3,4,2,5,6,7,8,5,9,7,6,1,4,2,3,4,2,6,8,5,3,7,9,1,7,1,3,9,2,4,8,5,6,9,6,1,5,3,7,2,8,4,2,8,7,4,1,9,6,3,5,3,4,5,2,8,6,1,7,9]; sudokuState.board = base.map((v,i) => Math.random() < 0.6 ? 0 : v); sudokuState.given = base.map((v,i) => v !== sudokuState.board[i]); sudokuRender(); document.getElementById('sudoku-status').textContent = 'New puzzle generated'; }
-function sudokuRender() { const g = document.getElementById('sudoku-grid'); if (!g) return; g.innerHTML = ''; for (let i = 0; i < 81; i++) { const c = document.createElement('div'); c.className = 'sudoku-cell'; c.dataset.index = i; c.textContent = sudokuState.board[i] || ''; if (sudokuState.given[i]) c.classList.add('given'); c.onclick = () => sudokuSelectCell(i); g.appendChild(c); } }
-
+function sudokuSetStatus(m,error=false){const e=document.getElementById('sudoku-status');if(e){e.textContent=m;e.style.color=error?'var(--danger)':'var(--text-muted)';}}
+function sudokuSelectCell(i){if(sudokuState.given[i])return;sudokuState.selected=i;document.querySelectorAll('.sudoku-cell').forEach(c=>c.classList.toggle('selected',Number(c.dataset.index)===i));}
+function sudokuEnterNumber(n){const i=sudokuState.selected;if(i<0||sudokuState.given[i]){sudokuSetStatus('Tap an editable cell first.');return;}sudokuState.board[i]=n;sudokuRender();sudokuSelectCell(i);sudokuUpdateControls();}
+function sudokuHandleKeydown(e){if(sudokuState.selected<0||e.target.matches('input,textarea,select'))return;const n=Number(e.key);if(n>=1&&n<=9)sudokuEnterNumber(n);else if(['Backspace','Delete','0'].includes(e.key))sudokuEnterNumber(0);else if(e.key.startsWith('Arrow')){const r=Math.floor(sudokuState.selected/9),c=sudokuState.selected%9;const d={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];const nr=r+d[0],nc=c+d[1];if(nr>=0&&nr<9&&nc>=0&&nc<9)sudokuSelectCell(nr*9+nc);}}
+function sudokuHasConflicts(b){for(let i=0;i<81;i++){const n=b[i];if(!n)continue;const r=Math.floor(i/9),c=i%9;for(let j=0;j<9;j++){if((j!==c&&b[r*9+j]===n)||(j!==r&&b[j*9+c]===n))return true;}const br=Math.floor(r/3)*3,bc=Math.floor(c/3)*3;for(let y=br;y<br+3;y++)for(let x=bc;x<bc+3;x++){const k=y*9+x;if(k!==i&&b[k]===n)return true;}}return false;}
+function sudokuValidate(){const bad=sudokuHasConflicts(sudokuState.board);sudokuRender();sudokuSetStatus(bad?'Duplicates found in a row, column, or 3×3 box.':'No conflicts found so far.',bad);return !bad;}
+function sudokuUpdateControls(){const count=sudokuState.board.filter(Boolean).length;const b=document.getElementById('sudoku-solve');if(b)b.disabled=count<17||sudokuHasConflicts(sudokuState.board);}
+function sudokuSolve(){const count=sudokuState.board.filter(Boolean).length;if(!count){sudokuSetStatus('The grid is empty. Enter your clues first, or tap New Puzzle to load an example.',true);return;}if(count<17){sudokuSetStatus('Please enter at least 17 clues before solving.',true);return;}if(!sudokuValidate()){sudokuSetStatus('Fix duplicate numbers before solving.',true);return;}const solution=solveSudoku(sudokuState.board);if(!solution){sudokuSetStatus('This puzzle has no solution. Check the numbers you entered.',true);return;}sudokuState.board=solution;sudokuRender();sudokuSetStatus('Solved successfully.');}
+function sudokuClear(){sudokuState={board:Array(81).fill(0),given:Array(81).fill(false),selected:-1};sudokuRender();sudokuUpdateControls();sudokuSetStatus('Grid cleared. Tap a cell and enter a number.');}
+function sudokuNew(){const p=[5,3,0,0,7,0,0,0,0,6,0,0,1,9,5,0,0,0,0,9,8,0,0,0,0,6,0,8,0,0,0,6,0,0,0,3,4,0,0,8,0,3,0,0,1,7,0,0,0,2,0,0,0,6,0,6,0,0,0,0,2,8,0,0,0,0,4,1,9,0,0,5,0,0,0,0,8,0,0,7,9];sudokuState={board:p,given:p.map(Boolean),selected:-1};sudokuRender();sudokuUpdateControls();sudokuSetStatus('Example puzzle loaded. Tap Solve Puzzle when ready.');}
+function sudokuRender(){const g=document.getElementById('sudoku-grid');if(!g)return;g.innerHTML='';for(let i=0;i<81;i++){const b=document.createElement('button');b.type='button';b.className='sudoku-cell';b.dataset.index=String(i);b.textContent=sudokuState.board[i]||'';if(sudokuState.given[i])b.classList.add('given');if(i===sudokuState.selected)b.classList.add('selected');b.setAttribute('aria-label','Row '+(Math.floor(i/9)+1)+', column '+(i%9+1));b.addEventListener('click',()=>sudokuSelectCell(i));g.appendChild(b);}for(let i=0;i<81;i++){const n=sudokuState.board[i];if(!n)continue;const r=Math.floor(i/9),c=i%9;let bad=false;for(let j=0;j<9;j++)if((j!==c&&sudokuState.board[r*9+j]===n)||(j!==r&&sudokuState.board[j*9+c]===n))bad=true;const br=Math.floor(r/3)*3,bc=Math.floor(c/3)*3;for(let y=br;y<br+3;y++)for(let x=bc;x<bc+3;x++){const k=y*9+x;if(k!==i&&sudokuState.board[k]===n)bad=true;}if(bad)g.children[i].classList.add('error');}}
 // -----------------------------------------------------------------------------
 // UTILITIES
 // -----------------------------------------------------------------------------

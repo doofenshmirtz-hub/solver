@@ -26,16 +26,16 @@
     <header>
       <span class="header-badge">Cube Solver v3.0</span>
       <h1>Rubik's Cube Solver</h1>
-      <p class="subtitle">Interactive 2D Canvas Cube • Cubie Representation • 54→40 Numbers • Kociemba Phase 1</p>
+      <p class="subtitle">Six-face cube net • Tap stickers to enter colors • Verified cube solver</p>
     </header>
 
     <main>
       <section class="input-section" aria-labelledby="input-heading">
         <h2 id="input-heading">Enter Cube State</h2>
-        <p class="section-desc">Click stickers on the 2D cube to set colors. Drag to rotate, scroll to zoom. Centers define the color scheme (White↔Yellow, Red↔Orange, Green↔Blue).</p>
+        <p class="section-desc">Enter your cube using the unfolded six-face net below. Choose a color, then tap any of the 54 stickers. Centers define the color scheme (White↔Yellow, Red↔Orange, Green↔Blue).</p>
 
         <div class="cube-3d-wrapper">
-          <div id="cube-3d-input" class="cube-3d-container" role="application" aria-label="Interactive 2D Canvas cube - click stickers to change colors"></div>
+          <div id="cube-3d-input" class="cube-3d-container cube-net-container" role="group" aria-label="Unfolded six-face Rubik cube net"></div>
         </div>
 
         <div class="color-palette" id="color-palette" role="group" aria-label="Color palette - select a color then click stickers on the cube">
@@ -85,7 +85,7 @@
               <span class="face-tag L">L (Left/Orange)</span>
               <span class="face-tag B">B (Back/Blue)</span>
             </div>
-            <p>Select a color from the palette, then click a sticker on the cube. The centers (middle stickers) must follow standard opposites.</p>
+            <p>Select a color from the palette, then tap a sticker in the six-face net. The centers (middle stickers) must follow standard opposites.</p>
           </div>
         </details>
       </section>
@@ -124,10 +124,10 @@
 
       <section class="visualizer-section" id="visualizer-section" hidden aria-labelledby="viz-heading">
         <h2 id="viz-heading">Solution Visualization</h2>
-        <p class="section-desc">Watch the 2D cube solve step by step. Drag to rotate view, use controls to play through the solution.</p>
+        <p class="section-desc">Follow the solution step by step. The six-face net updates after each move.</p>
 
         <div class="cube-3d-wrapper">
-          <div id="cube-3d-container" class="cube-3d-container" role="application" aria-label="Animated 2D cube showing solution steps"></div>
+          <div id="cube-3d-container" class="cube-3d-container cube-net-container" role="group" aria-label="Cube solution state shown as six-face net"></div>
         </div>
 
         <div class="viz-controls">
