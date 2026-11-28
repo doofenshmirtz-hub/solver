@@ -288,21 +288,24 @@ function cubieToStickers(state, colorToFace) {
 class CubeRenderer {
   constructor(el, pickerColor = 'W') { this.el=el; this.pickerColor=pickerColor; this.stickerColors={}; this.buildNet(); }
   buildNet() {
-    this.el.innerHTML=''; this.el.classList.add('cube-net');
-    const pos={U:['4 / span 3','1 / span 3'],L:['1 / span 3','4 / span 3'],F:['4 / span 3','4 / span 3'],R:['7 / span 3','4 / span 3'],B:['10 / span 3','4 / span 3'],D:['4 / span 3','7 / span 3']};
+    this.el.innerHTML='';
+    this.netEl=document.createElement('div');
+    this.netEl.className='cube-net-layout';
+    this.el.appendChild(this.netEl);
+    const positions={U:['4 / span 3','1 / span 3'],L:['1 / span 3','4 / span 3'],F:['4 / span 3','4 / span 3'],R:['7 / span 3','4 / span 3'],B:['10 / span 3','4 / span 3'],D:['4 / span 3','7 / span 3']};
     for(const face of FACE_ORDER){
-      const box=document.createElement('div'); box.className='cube-net-face'; box.style.gridColumn=pos[face][0]; box.style.gridRow=pos[face][1];
+      const box=document.createElement('div'); box.className='cube-net-face'; box.style.gridColumn=positions[face][0]; box.style.gridRow=positions[face][1];
       const label=document.createElement('span'); label.className='cube-net-label'; label.textContent=({U:'U · UP',R:'R · RIGHT',F:'F · FRONT',D:'D · DOWN',L:'L · LEFT',B:'B · BACK'})[face]; box.appendChild(label);
-      for(let i=0;i<9;i++){const b=document.createElement('button');b.type='button';b.className='cube-net-sticker';b.dataset.face=face;b.dataset.index=String(i);b.setAttribute('aria-label',face+' face sticker '+(i+1));b.addEventListener('click',()=>{if(window.app)window.app.onStickerChange(face,i,this.pickerColor);this.setColor(face,i,this.pickerColor);});box.appendChild(b);}
-      this.el.appendChild(box);
+      for(let i=0;i<9;i++){const b=document.createElement('button');b.type='button';b.className='cube-net-sticker';b.dataset.face=face;b.dataset.index=String(i);b.setAttribute('aria-label',face+' face sticker '+(i+1));b.addEventListener('click',()=>{if(window.app)window.app.onStickerChange(face,i,this.pickerColor);});box.appendChild(b);}
+      this.netEl.appendChild(box);
     } this.draw();
   }
   getColor(f,i){return this.stickerColors[f+':'+i]||({U:'W',R:'R',F:'G',D:'Y',L:'O',B:'B'})[f];}
-  setColor(f,i,c){this.stickerColors[f+':'+i]=c;const e=this.el.querySelector('[data-face="'+f+'"] [data-index="'+i+'"]');if(e){e.style.backgroundColor=COLOR_CSS[c];e.dataset.color=c;e.setAttribute('aria-label',f+' face sticker '+(i+1)+', '+c);}}
+  setColor(f,i,c){this.stickerColors[f+':'+i]=c;const e=this.netEl.querySelector('[data-face="'+f+'"] [data-index="'+i+'"]');if(e){e.style.backgroundColor=COLOR_CSS[c];e.dataset.color=c;e.setAttribute('aria-label',f+' face sticker '+(i+1)+', '+c);}}
   setAll(colors){for(const f of FACE_ORDER)for(let i=0;i<9;i++)this.setColor(f,i,colors[f]);}
   setState(state,colorToFace){const stickers=cubieToStickers(state,colorToFace);for(const f of FACE_ORDER)for(let i=0;i<9;i++)this.setColor(f,i,stickers[f][i]);}
   setFacelets(facelets,faceToColor){if(typeof facelets!=='string'||facelets.length!==54)throw new Error('Invalid facelet snapshot');for(let f=0;f<6;f++)for(let i=0;i<9;i++)this.setColor(FACE_ORDER[f],i,faceToColor[facelets[f*9+i]]);}
-  draw(){for(const f of FACE_ORDER)for(let i=0;i<9;i++){const e=this.el.querySelector('[data-face="'+f+'"] [data-index="'+i+'"]');if(e){const c=this.getColor(f,i);e.style.backgroundColor=COLOR_CSS[c];e.dataset.color=c;}}}
+  draw(){for(const f of FACE_ORDER)for(let i=0;i<9;i++){const e=this.netEl.querySelector('[data-face="'+f+'"] [data-index="'+i+'"]');if(e){const c=this.getColor(f,i);e.style.backgroundColor=COLOR_CSS[c];e.dataset.color=c;}}}
 }
 
 // -----------------------------------------------------------------------------
