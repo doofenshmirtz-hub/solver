@@ -1535,3 +1535,11 @@ footer a:hover {
 .sudoku-number-pad button{min-height:42px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);color:var(--text);font:700 1rem var(--font-mono);cursor:pointer}
 .sudoku-number-pad .clear-number{color:var(--danger)}
 @media(max-width:520px){.cube-net-container{padding:8px}.cube-net{gap:2px}.cube-net-face{gap:1px;padding:2px}.cube-net-sticker{border-width:1px;border-radius:2px}.sudoku-number-pad{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
+/* The inner grid is separate from the outer cube frame to avoid layout collisions. */
+.cube-3d-container.cube-net-container{height:auto;min-height:0;padding:clamp(12px,2vw,20px);display:flex;align-items:center;justify-content:center;overflow:visible}
+.cube-net-layout{width:100%;max-width:540px;aspect-ratio:4/3;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));gap:clamp(2px,.55vw,5px)}
+.cube-net-layout .cube-net-face{min-width:0;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto repeat(3,minmax(0,1fr));gap:2px;padding:3px;border:1px solid rgba(255,255,255,.14);border-radius:7px;background:rgba(255,255,255,.035)}
+.cube-net-layout .cube-net-label{grid-column:1/-1;align-self:center;text-align:center;font-size:clamp(7px,1.6vw,10px);line-height:1.2;font-weight:800;color:var(--text-muted)}
+.cube-net-layout .cube-net-sticker{display:block;width:100%;height:100%;min-width:0;min-height:0;padding:0;border:2px solid rgba(10,15,26,.88);border-radius:3px;aspect-ratio:auto;cursor:pointer;touch-action:manipulation}
+@media(max-width:520px){.cube-3d-container.cube-net-container{padding:8px}.cube-net-layout{gap:2px}.cube-net-layout .cube-net-face{gap:1px;padding:2px}.cube-net-layout .cube-net-sticker{border-width:1px;border-radius:2px}}
