@@ -1520,3 +1520,18 @@ footer a:hover {
 #camera-video { display: block; width: 100%; max-height: 360px; margin-top: 12px; background: #05070d; border-radius: 12px; object-fit: cover; }
 .camera-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 @media (max-width: 520px) { .camera-actions .btn { flex: 1 1 100%; } }
+
+/* Unfolded cube net: U above L-F-R-B, D below F. */
+.cube-3d-wrapper{min-height:0}
+.cube-net-container{width:min(100%,620px);max-width:620px;height:auto;min-height:0;padding:clamp(10px,2vw,22px);display:flex;align-items:center;justify-content:center;overflow:visible}
+.cube-net{width:100%;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(9,minmax(0,1fr));gap:clamp(2px,.7vw,6px);aspect-ratio:4/3;max-width:540px}
+.cube-net-face{min-width:0;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto repeat(3,minmax(0,1fr));gap:2px;padding:3px;border-radius:8px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.13)}
+.cube-net-label{grid-column:1/-1;text-align:center;font-size:clamp(7px,1.6vw,10px);font-weight:800;letter-spacing:.04em;color:var(--text-muted);line-height:1.4}
+.cube-net-sticker{min-width:0;min-height:0;padding:0;border:2px solid rgba(10,15,26,.85);border-radius:3px;aspect-ratio:1;cursor:pointer;touch-action:manipulation}
+.cube-net-sticker:focus-visible{outline:2px solid var(--accent-light);outline-offset:1px}
+.cube-net-sticker:hover{filter:brightness(1.12)}
+.sudoku-cell.selected{outline:2px solid var(--accent-light);outline-offset:-3px;background:rgba(139,92,246,.2)}
+.sudoku-number-pad{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;max-width:480px;margin:12px auto 0}
+.sudoku-number-pad button{min-height:42px;border:1px solid var(--border);border-radius:8px;background:var(--bg-elevated);color:var(--text);font:700 1rem var(--font-mono);cursor:pointer}
+.sudoku-number-pad .clear-number{color:var(--danger)}
+@media(max-width:520px){.cube-net-container{padding:8px}.cube-net{gap:2px}.cube-net-face{gap:1px;padding:2px}.cube-net-sticker{border-width:1px;border-radius:2px}.sudoku-number-pad{grid-template-columns:repeat(5,minmax(0,1fr))}}
